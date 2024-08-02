@@ -1,0 +1,16 @@
+# Atmel studio files
+
+/SAMD21_USB_HID/.atmelstart
+/SAMD21_USB_HID/.project-backup
+/SAMD21_USB_HID/Debug
+.vs/
+vs/
+bin/
+Debug/
+__pycache__/
+
+# C# visual studio files
+
+/CS_USB_HID_C/bin
+/CS_USB_HID_C/.vs
+/CS_USB_HID_C/obj
