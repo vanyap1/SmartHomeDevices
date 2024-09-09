@@ -28,14 +28,14 @@
 #define NODEID			DEVMODULE2
 #define ALLNODES		0xfe
 #define SMARTSCREEN		0xf0
-#define RX_MODE			TX_UNMUTE
+#define RX_MODE			TX_MUTE
 #define RTC_SYNC		0x81
 #define MSG				0x82
 #define POWERBANK		0x83
 #define GPIO_CTRL		0x84		//reserved for lora relay module (Send with tis ID to module)
 #define GPIO_INFO		0x85		//reserved for lora relay module (Module will answer with this ID)
 #define GPIO_ALARM		0x86		//reserved for lora relay module (Alarm message)
-
+#define MAIN_UPS		0x12		//Home ups
 
 
 #define LCD_BLK			4
@@ -48,7 +48,7 @@
 #define TX_MUTE			0
 #define TX_UNMUTE		1
 
-#define TX_MODE			TX_UNMUTE
+#define TX_MODE			TX_MUTE
 
 #define INVERT_BIT(value, bitNumber) ((value) ^= (1 << (bitNumber)))
 #define SET_BIT(value, bitNumber) ((value) |= (1 << (bitNumber)))
@@ -59,6 +59,9 @@
 //BMS
 #define  INA226ADR					0x40
 powerData battery;
+powerData mainBattery;
+
+
 u8g2_t lcd;
 ramIDS ramInfo;
 
@@ -108,25 +111,26 @@ int main(void)
 	
 	//EXTERNAL_IRQ_0_example();
 	
-	uint8_t rssiData[] = "                    \n\r";
-	uint8_t rf_str[64];
-	uint8_t keyVal[] =    "                    \n\r";
-	uint8_t testMsg[24];
-	uint8_t rtcData[24];
-	uint8_t batData[24];
-	uint8_t spiRamData[33];
-	uint8_t spiDataBuffer[16];
-	char debugString[128];
-	uint8_t outputs_regs[] = {0x06, 0x07, 0xff};
+	//uint8_t rssiData[] = "                    \n\r";
+	//uint8_t rf_str[64];
+	//uint8_t keyVal[] =    "                    \n\r";
+	uint8_t testMsg[64];
+	uint8_t rtcData[64];
+	uint8_t batData[64];
+	uint8_t upsData[64];
+	//uint8_t spiRamData[33];
+	//uint8_t spiDataBuffer[16];
+	//char debugString[128];
+	//uint8_t outputs_regs[] = {0x06, 0x07, 0xff};
 	uint8_t portValue[] = {0x02, 0xff, 0xff};
 	uint8_t keyValues[2];
-	uint8_t intCount = 0;
+	//uint8_t intCount = 0;
 	uint8_t lcdInitReq = 0;
-	//rtc_set(&sys_rtc);
+	rtc_set(&sys_rtc);
 	
 	
 	
-	I2C_write_batch(0x27, (uint8_t *)&outputs_regs, 3);
+	//I2C_write_batch(0x27, (uint8_t *)&outputs_regs, 3);
 
 	
 	
@@ -141,7 +145,7 @@ int main(void)
 	//u8g2_SetContrast(&lcd, 80); //For LCD screen
 
 	u8g2_SetContrast(&lcd, 5); //For VFD screen
-		//
+	//
 	u8g2_ClearBuffer(&lcd);
 	u8g2_SendBuffer(&lcd);
 	
@@ -155,23 +159,22 @@ int main(void)
 	//u8g2_SetFont(&lcd, u8g2_font_battery19_tn); //battery icons
 	
 	/* Replace with your application code */
-	u8g2_DrawRFrame(&lcd, 0, 0, 128 ,64, 5);
-	u8g2_DrawStr(&lcd, 20, 15, (char *)__DATE__);//
-	u8g2_DrawStr(&lcd, 35, 30, (char *)__TIME__);//
+	u8g2_DrawRFrame(&lcd, 0, 0, 256 ,48, 5);
+	u8g2_DrawStr(&lcd, 4, 12, (char *)__DATE__);//
+	u8g2_DrawStr(&lcd, 90, 12, (char *)__TIME__);//
 	u8g2_SetFont(&lcd, u8g2_font_courR08_tr);
-	u8g2_DrawStr(&lcd, 7, 40, (char *)__TIMESTAMP__);//
-	//u8g2_DrawStr(&lcd, 7, 49, (char *)__FILE__);//
+	u8g2_DrawStr(&lcd, 4, 20, (char *)__TIMESTAMP__);//
 	u8g2_SendBuffer(&lcd);
 	
 	//PowerMeterInit(INA226ADR);
 	
-	delay_ms(150);
+	delay_ms(100);
+	u8g2_ClearBuffer(&lcd);
 	
-	 
-		
-	 GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID_WDT |
-	 GCLK_CLKCTRL_CLKEN |
-	 GCLK_CLKCTRL_GEN_GCLK3;	
+	
+	GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID_WDT |
+	GCLK_CLKCTRL_CLKEN |
+	GCLK_CLKCTRL_GEN_GCLK3;
 	//WDT->INTENSET.bit.EW  = 0;      // Enable early warning interrupt
 	//WDT->EWCTRL.bit.EWOFFSET = 0x0B;  // Early Warning Interrupt Time Offset 0xA
 	//WDT->CONFIG.bit.PER    = 0xB;  // Set period for chip reset 0xB 16384 clock cycles
@@ -188,7 +191,7 @@ int main(void)
 	
 	
 	gpio_set_pin_level(LED_G, false);
-	SPI_PIXEL_init();
+	//SPI_PIXEL_init();
 	
 	
 	
@@ -234,37 +237,41 @@ int main(void)
 		
 		
 		
-	
+		
 		if (rf_isReady()) {
 			rfHeader* rfRxDataMsg=rfMsgType();
-			sprintf((char *)rf_str , "%02X%02X%02X%02X%02X;%03d",  rfRxDataMsg->senderAddr, rfRxDataMsg->destinationAddr, rfRxDataMsg->opcode,  rfRxDataMsg->rxtxBuffLenght,  rfRxDataMsg->dataCRC, rfRxDataMsg->rssi);
+			//sprintf((char *)rf_str , "%02X%02X%02X%02X%02X;%03d",  rfRxDataMsg->senderAddr, rfRxDataMsg->destinationAddr, rfRxDataMsg->opcode,  rfRxDataMsg->rxtxBuffLenght,  rfRxDataMsg->dataCRC, rfRxDataMsg->rssi);
 			//sprintf((char *)rssiData, "RSSI:%04d;" , rfRxDataMsg->rssi);
 			
 			//sprintf(debugString, "FLG=:%02X[D8]\n\r", readReg(REG_IRQFLAGS1));
 			
-			for (int i = 0; i < rfRxDataMsg->rxtxBuffLenght; ++i) {
-			sprintf(&debugString[i * 2], "%02X", DATA_BUFF[i]);
-			}
+			//for (int i = 0; i < rfRxDataMsg->rxtxBuffLenght; ++i) {
+			//	sprintf(&debugString[i * 2], "%02X", DATA_BUFF[i]);
+			//}
 			
-			DebugSerialWrite(rf_str, strlen(rf_str));
-			DebugSerialWriteln(debugString, strlen(debugString));
+			//DebugSerialWrite(rf_str, strlen(rf_str));
+			//DebugSerialWriteln(debugString, strlen(debugString));
 			
 			switch(rfRxDataMsg->opcode) {
 				case MSG:
-				memcpy(&testMsg, DATA_BUFF, sizeof(testMsg));
+				memcpy(&testMsg, (void *)DATA_BUFF, sizeof(testMsg));
 				break;
 				case POWERBANK:
-				memcpy(&battery, DATA_BUFF, sizeof(battery));
+				memcpy(&battery, (void *)DATA_BUFF, sizeof(battery));
+				break;
+				
+				case MAIN_UPS:
+				memcpy(&mainBattery, (void *)DATA_BUFF, sizeof(mainBattery));
 				break;
 				
 				case RTC_SYNC:
-					memcpy(&sys_rtc, DATA_BUFF, sizeof(sys_rtc));
-					rtc_set(&sys_rtc);
-					if(sys_rtc.second == 0){lcdInitReq=1;}
+				memcpy(&sys_rtc, (void *)DATA_BUFF, sizeof(sys_rtc));
+				rtc_set(&sys_rtc);
+				if(sys_rtc.second == 0){lcdInitReq=1;}
 				break;
 				default:
-					delay_us(1);
-					//gpio_toggle_pin_level(LED_G);
+				delay_us(1);
+				//gpio_toggle_pin_level(LED_G);
 			}
 			updateScreen = 1;
 		}
@@ -278,7 +285,15 @@ int main(void)
 			rtc_sync(&sys_rtc);
 			//PowerMeterMeasure(&battery);
 			
-			sprintf(rtcData, "%02d:%02d:%02d", sys_rtc.hour, sys_rtc.minute, sys_rtc.second);
+			sprintf((void *)rtcData, "%02d:%02d:%02d", sys_rtc.hour, sys_rtc.minute, sys_rtc.second);			
+			rfTxDataPack.destinationAddr = ALLNODES;
+			rfTxDataPack.senderAddr = NODEID;
+			rfTxDataPack.opcode = MAIN_UPS;
+			rfTxDataPack.rxtxBuffLenght = sizeof(mainBattery);
+			rfTxDataPack.dataCRC = simpleCRC((void *)&mainBattery, sizeof(mainBattery));
+			sendFrame(&rfTxDataPack, &mainBattery);
+			
+			
 			
 			if(TX_MODE){
 				if (sys_rtc.second == 0)
@@ -287,7 +302,7 @@ int main(void)
 					rfTxDataPack.senderAddr = NODEID;
 					rfTxDataPack.opcode = RTC_SYNC;
 					rfTxDataPack.rxtxBuffLenght = sizeof(sys_rtc);
-					rfTxDataPack.dataCRC = simpleCRC(&sys_rtc, sizeof(sys_rtc));
+					rfTxDataPack.dataCRC = simpleCRC((void *)&sys_rtc, sizeof(sys_rtc));
 					sendFrame(&rfTxDataPack, &sys_rtc);
 				}
 				
@@ -319,27 +334,40 @@ int main(void)
 			
 			//LCD
 			
-			
-			
-			
-			
-			sprintf(batData, "%05d;%05d", battery.voltage, battery.current);		
-			sprintf(rtcData, "%02d:%02d:%02d", sys_rtc.hour, sys_rtc.minute, sys_rtc.second);
+			sprintf((void *)rtcData, "%02d:%02d:%02d", sys_rtc.hour, sys_rtc.minute, sys_rtc.second);
 			u8g2_SetFont(&lcd, u8g2_font_ncenB14_tr);
 			//u8g2_SetFont(&lcd, u8g2_font_smart_patrol_nbp_tr);
 			u8g2_DrawStr(&lcd, 1, 15, (char *)rtcData);
 			
+			
+			
+			
 			u8g2_SetFont(&lcd, u8g2_font_courR08_tr);
-			u8g2_DrawStr(&lcd, 166, 8, (char *)rf_str);
-			u8g2_DrawStr(&lcd, 180, 17, (char *)batData);
-			u8g2_DrawStr(&lcd, 1, 38, (char *)testMsg);
-			u8g2_DrawStr(&lcd, 1, 47, (char *)DATA_BUFF);
+			u8g2_DrawLine(&lcd, 82, 0, 82, 18);
+			sprintf((void *)batData, "%2.1f,%2.1f,%3.1fW,%dWh,%d%%", (float )battery.voltage/1000, (float)battery.current/1000, battery.power, (int)battery.energy, battery.capacity);
+			u8g2_DrawStr(&lcd, 84, 7, (char *)batData);
+			
+			sprintf((void *)upsData, "%2.1f,%2.1f,%3.1fW,%dWh,%d%%", (float)mainBattery.voltage/1000, (float)mainBattery.current/1000, mainBattery.power, (int)mainBattery.energy, mainBattery.capacity);
+			u8g2_DrawStr(&lcd, 84, 17, (char *)upsData);
+			
+			u8g2_DrawStr(&lcd, 1, 48, (char *)testMsg);
 			
 			
-			//sprintf(batData, "%3.1fW  %3.3fWh", battery.power, battery.energy);
-			snprintf(batData, sizeof(batData), "%3.1fW  %3.1fWh", battery.power, battery.energy);
-			//sprintf(batData, "%3.1f; %3.3f", battery.power, battery.energy);
-			u8g2_DrawStr(&lcd, 160, 26, (char *)batData);
+			
+			
+			
+			
+			
+			//u8g2_DrawStr(&lcd, 166, 8, (char *)rf_str);
+			
+			
+			
+			if(lcdInitReq){
+				lcdInitReq=0;
+			}
+			
+			
+			//u8g2_DrawStr(&lcd, 160, 26, (char *)batData);
 			if(sys_rtc.second == 0){
 				u8g2_InitDisplay(&lcd);
 				u8g2_SetPowerSave(&lcd, 0);
@@ -365,11 +393,11 @@ int main(void)
 		//u8g2_DrawStr(&lcd, 113, 43, (char *)testMsg);
 		
 		//if(lcdInitReq){
-			//u8g2_InitDisplay(&lcd);
-			//u8g2_SetPowerSave(&lcd, 0);
-			//u8g2_SetFlipMode(&lcd, 1);
-			//u8g2_SetContrast(&lcd, 5); //For VFD screen
-			//lcdInitReq = 0;
+		//u8g2_InitDisplay(&lcd);
+		//u8g2_SetPowerSave(&lcd, 0);
+		//u8g2_SetFlipMode(&lcd, 1);
+		//u8g2_SetContrast(&lcd, 5); //For VFD screen
+		//lcdInitReq = 0;
 		//}
 		
 		//u8g2_UserInterfaceMessage(&lcd, "title1", "title2", "title3", "OK");
@@ -386,7 +414,7 @@ int main(void)
 		
 		//ramReadPage(&spiDataBuffer, 0, sizeof(spiDataBuffer));
 		//for (int i = 0; i < 16; ++i) {
-			//sprintf(&spiRamData[i * 2], "%02X", spiDataBuffer[i]);
+		//sprintf(&spiRamData[i * 2], "%02X", spiDataBuffer[i]);
 		//}
 		//spiRamData[32] = '\0';
 		//u8g2_DrawStr(&lcd, 3, 90, (char *)spiRamData);

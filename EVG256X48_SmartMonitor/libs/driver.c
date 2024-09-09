@@ -324,7 +324,7 @@ void RF_SPI_init(void){
 
 void RF_HW_Reset(void){
 	gpio_set_pin_level(RF_RST, true);
-	delay_ms(1);
+	delay_ms(10);
 	gpio_set_pin_level(RF_RST, false);
 	delay_ms(20);
 }

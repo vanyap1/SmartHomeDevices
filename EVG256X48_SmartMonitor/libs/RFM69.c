@@ -456,14 +456,18 @@ void RF_unselect()
 		RF_select();
 		SPI_write(REG_FIFO);
 		RFM69_ReadBuff(&rfRxHeader, 5);
-		rfRxHeader.rxtxBuffLenght -= 5;
+		rfRxHeader.rxtxBuffLenght -= 4;
+		if(rfRxHeader.rxtxBuffLenght >= (RF69_MAX_DATA_LEN-5)){
+			rfRxHeader.rxtxBuffLenght = RF69_MAX_DATA_LEN-5;
+			}else{
+			rfRxHeader.dataValid=1;
+		}
 		RFM69_ReadBuff(&DATA_BUFF, rfRxHeader.rxtxBuffLenght+1);
 		RF_unselect();
 		writeReg(REG_DIOMAPPING1 , 0x40);
 		writeReg(REG_OPMODE , RF69_ListenAbort); 
 		rfRxHeader.rssi = readRSSI(0);
 		setMode(RF69_MODE_RX);
-		rfRxHeader.dataValid=1;
 		return &rfRxHeader;
 	}else{
 		rfRxHeader.dataValid=0;

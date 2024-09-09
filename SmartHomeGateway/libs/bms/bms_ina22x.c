@@ -5,8 +5,7 @@
  * Created: 16.11.2023 21:05:21
  *  Author: Vanya
  */ 
-#include "rtc.h"
-#include "driver.h"
+#include "hw_driver.h"
 #include "bms_ina22x.h"
 #include <math.h>
 

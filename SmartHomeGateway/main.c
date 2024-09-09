@@ -11,9 +11,11 @@
 #include "rtc.h"
 #include "u8g2.h"
 #include "displaySupport.h"
+#include "bms_ina22x.h"
+#include "string.h"
 
 u8g2_t lcd;
-
+powerData mainBattery;
 
 
 #define POWERBANKID		0x21
@@ -31,6 +33,9 @@ u8g2_t lcd;
 #define RTC_SYNC		0x81
 #define MSG				0x82
 #define POWERBANK		0x83
+#define MAIN_UPS		0x12		//Home ups
+
+
 
 #define TX_MUTE			0
 #define TX_UNMUTE		1
@@ -124,10 +129,15 @@ static bool usb_device_cb_generic_out(const uint8_t ep, const enum usb_xfer_code
 
 int main(void)
 {
+	GCLK->CLKCTRL.reg = GCLK_CLKCTRL_ID_WDT |
+	GCLK_CLKCTRL_CLKEN |
+	GCLK_CLKCTRL_GEN_GCLK3;
+	WDT->CLEAR.bit.CLEAR = 0xa5;
+
 	
 	//atmel_start_init();
 	RTC_init();
-	//rtc_set(&sys_rtc);
+	rtc_set(&sys_rtc);
 	rtc_int_enable(&sys_rtc);
 	mcu_init();
 	//rtc_set(&sys_rtc);
@@ -143,6 +153,8 @@ int main(void)
 				
 		u8g2_SetI2CAddress(&lcd, 0x3d);//3c
 		u8g2_InitDisplay(&lcd);
+		WDT->CLEAR.bit.CLEAR = 0xa5;
+
 		u8g2_SetPowerSave(&lcd, 0);
 		//u8g2_SetFlipMode(&lcd, 1);
 		//u8g2_SetContrast(&lcd, 120);
@@ -160,10 +172,12 @@ int main(void)
 		
 		
 		rfm69_init(868, NODEID, NETWORKID);
+		WDT->CLEAR.bit.CLEAR = 0xa5;
 		setHighPower(true);
 		
 		
 		wizphy_reset();
+		WDT->CLEAR.bit.CLEAR = 0xa5;
 		delay_ms(100);
 		wizchip_init(rx_tx_buff_sizes,rx_tx_buff_sizes);
 		wizchip_setnetinfo(&netInfo);
@@ -185,7 +199,9 @@ int main(void)
 	
 	/* Replace with your application code */
 	while (1) {
-		
+		WDT->CLEAR.bit.CLEAR = 0xa5;
+		while(WDT->STATUS.bit.SYNCBUSY);
+
 		
 		
 		
@@ -212,7 +228,7 @@ int main(void)
 			//result = sendto(0, testBuffer, strlen(testBuffer), address, port);
 			
 			
-			//gpio_toggle_pin_level(RLD);
+			gpio_toggle_pin_level(RLD);
 			lcdUpdateReq = 1;
 			
 			
@@ -285,8 +301,19 @@ int main(void)
 					sendFrame(&rfTxDataPack, &http_ansver);
 					gpio_set_pin_level(RF_LED, false);
 				}	
-			
-			
+			}
+			else if(TCP_RX_BUF[0] == 0xaa & TCP_RX_BUF[1] == MAIN_UPS){
+				memcpy(&mainBattery, &TCP_RX_BUF[2], sizeof(mainBattery));
+				if(TX_MODE == TX_UNMUTE){
+					rfTxDataPack.destinationAddr = ALLNODES;
+					rfTxDataPack.senderAddr = NODEID;
+					rfTxDataPack.opcode = MAIN_UPS;
+					rfTxDataPack.rxtxBuffLenght = sizeof(mainBattery);
+					rfTxDataPack.dataCRC = simpleCRC((void *)&mainBattery, sizeof(mainBattery));
+					gpio_set_pin_level(RF_LED, true);
+					sendFrame(&rfTxDataPack, &mainBattery);
+					gpio_set_pin_level(RF_LED, false);
+				}
 			}else{
 				memset(&udpRxBuff, 0, sizeof(udpRxBuff));
 				memcpy(&udpRxBuff, &TCP_RX_BUF,sizeof(TCP_RX_BUF));

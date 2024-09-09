@@ -371,6 +371,7 @@
       <Value>../libs/Application</Value>
       <Value>../libs/Application/loopback</Value>
       <Value>../libs/ethernet/W5500</Value>
+      <Value>../libs/bms</Value>
     </ListValues>
   </armgcc.compiler.directories.IncludePaths>
   <armgcc.compiler.optimization.level>Optimize debugging experience (-Og)</armgcc.compiler.optimization.level>
@@ -831,6 +832,12 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="libs\Application\loopback\loopback.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="libs\bms\bms_ina22x.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="libs\bms\bms_ina22x.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="libs\config\pin_config.h">
@@ -1318,6 +1325,7 @@
     <Folder Include="libs\ethernet" />
     <Folder Include="libs\config" />
     <Folder Include="libs\Application" />
+    <Folder Include="libs\bms" />
     <Folder Include="libs\rtc" />
     <Folder Include="libs\spi_flash" />
     <Folder Include="libs\sd_card" />
