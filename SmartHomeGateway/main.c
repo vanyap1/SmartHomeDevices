@@ -133,7 +133,10 @@ int main(void)
 	GCLK_CLKCTRL_CLKEN |
 	GCLK_CLKCTRL_GEN_GCLK3;
 	WDT->CLEAR.bit.CLEAR = 0xa5;
+<<<<<<< HEAD
 
+=======
+>>>>>>> 84d4cf1303fe587406d276cade1fcc8312e3d71b
 	
 	//atmel_start_init();
 	RTC_init();
@@ -148,13 +151,19 @@ int main(void)
 		reg_wizchip_spiburst_cbfunc(W5500_ReadBuff, W5500_WriteBuff);
 		
 		//u8g2_Setup_ssd1306_i2c_128x32_univision_f(&lcd, U8G2_R0, u8x8_byte_sw_i2c, fake_delay_fn);
-		delay_ms(100);
+		//delay_ms(100);
 		u8g2_Setup_ssd1309_i2c_128x64_noname2_f(&lcd, U8G2_R0, u8x8_byte_sw_i2c, fake_delay_fn);
 				
 		u8g2_SetI2CAddress(&lcd, 0x3d);//3c
 		u8g2_InitDisplay(&lcd);
+<<<<<<< HEAD
 		WDT->CLEAR.bit.CLEAR = 0xa5;
 
+=======
+		
+		WDT->CLEAR.bit.CLEAR = 0xa5;
+		
+>>>>>>> 84d4cf1303fe587406d276cade1fcc8312e3d71b
 		u8g2_SetPowerSave(&lcd, 0);
 		//u8g2_SetFlipMode(&lcd, 1);
 		//u8g2_SetContrast(&lcd, 120);
@@ -178,7 +187,11 @@ int main(void)
 		
 		wizphy_reset();
 		WDT->CLEAR.bit.CLEAR = 0xa5;
+<<<<<<< HEAD
 		delay_ms(100);
+=======
+		//delay_ms(100);
+>>>>>>> 84d4cf1303fe587406d276cade1fcc8312e3d71b
 		wizchip_init(rx_tx_buff_sizes,rx_tx_buff_sizes);
 		wizchip_setnetinfo(&netInfo);
 		ctlnetwork(CN_SET_NETINFO, (void*) &netInfo);
@@ -198,10 +211,14 @@ int main(void)
 	//u8g2_SetContrast(&lcd, 0);
 	
 	/* Replace with your application code */
+	
 	while (1) {
 		WDT->CLEAR.bit.CLEAR = 0xa5;
 		while(WDT->STATUS.bit.SYNCBUSY);
+<<<<<<< HEAD
 
+=======
+>>>>>>> 84d4cf1303fe587406d276cade1fcc8312e3d71b
 		
 		
 		
