@@ -28,7 +28,6 @@
 #define NODEID			DEVMODULE2
 #define ALLNODES		0xfe
 #define SMARTSCREEN		0xf0
-#define RX_MODE			TX_MUTE
 #define RTC_SYNC		0x81
 #define MSG				0x82
 #define POWERBANK		0x83
@@ -48,7 +47,7 @@
 #define TX_MUTE			0
 #define TX_UNMUTE		1
 
-#define TX_MODE			TX_MUTE
+#define TX_MODE			TX_UNMUTE
 
 #define INVERT_BIT(value, bitNumber) ((value) ^= (1 << (bitNumber)))
 #define SET_BIT(value, bitNumber) ((value) |= (1 << (bitNumber)))
@@ -254,19 +253,27 @@ int main(void)
 			
 			switch(rfRxDataMsg->opcode) {
 				case MSG:
-				memcpy(&testMsg, (void *)DATA_BUFF, sizeof(testMsg));
+					if(simpleCRC(&DATA_BUFF, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
+						memcpy(&testMsg, (void *)DATA_BUFF, sizeof(testMsg));
+					}
 				break;
 				case POWERBANK:
-				memcpy(&battery, (void *)DATA_BUFF, sizeof(battery));
+					if(simpleCRC(&DATA_BUFF, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
+						memcpy(&battery, (void *)DATA_BUFF, sizeof(battery));
+					}
 				break;
 				
 				case MAIN_UPS:
-				memcpy(&mainBattery, (void *)DATA_BUFF, sizeof(mainBattery));
+					if(simpleCRC(&DATA_BUFF, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
+						memcpy(&mainBattery, (void *)DATA_BUFF, sizeof(mainBattery));
+					}
 				break;
 				
 				case RTC_SYNC:
-				memcpy(&sys_rtc, (void *)DATA_BUFF, sizeof(sys_rtc));
-				rtc_set(&sys_rtc);
+					if(simpleCRC(&DATA_BUFF, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
+						memcpy(&sys_rtc, (void *)DATA_BUFF, sizeof(sys_rtc));
+						rtc_set(&sys_rtc);
+					}
 				if(sys_rtc.second == 0){lcdInitReq=1;}
 				break;
 				default:
@@ -286,14 +293,7 @@ int main(void)
 			//PowerMeterMeasure(&battery);
 			
 			sprintf((void *)rtcData, "%02d:%02d:%02d", sys_rtc.hour, sys_rtc.minute, sys_rtc.second);			
-			rfTxDataPack.destinationAddr = ALLNODES;
-			rfTxDataPack.senderAddr = NODEID;
-			rfTxDataPack.opcode = MAIN_UPS;
-			rfTxDataPack.rxtxBuffLenght = sizeof(mainBattery);
-			rfTxDataPack.dataCRC = simpleCRC((void *)&mainBattery, sizeof(mainBattery));
-			sendFrame(&rfTxDataPack, &mainBattery);
-			
-			
+
 			
 			if(TX_MODE){
 				if (sys_rtc.second == 0)

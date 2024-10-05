@@ -57,13 +57,8 @@ typedef struct {
 uint8_t rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID);
 void setAddress(uint8_t addr);
 void setNetwork(uint8_t networkID);
-uint8_t canSend();
-//void send(uint8_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t requestACK);
-uint8_t sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries, uint8_t retryWaitTime);
-uint8_t ACKRequested();
-uint8_t ACKReceived(uint8_t fromNodeID);
+
 void receiveBegin();
-void sendACK(const void* buffer, uint8_t bufferSize);
 uint32_t getFrequency();
 void setFrequency(uint32_t freqHz);
 void encrypt(const char* key);
@@ -76,16 +71,14 @@ void rcCalibration();                         // calibrate the internal RC oscil
 uint8_t readReg(uint8_t addr);
 void writeReg(uint8_t addr, uint8_t val);
 //void sendFrame(uint8_t address, uint8_t toAddress, uint8_t opcode, uint8_t extraArg, const void* buffer, uint8_t bufferSize);
+void clearFIFO();
 void sendFrame(rfHeader * txHeader, const void* buffer);
 void setMode(uint8_t mode);
 void setHighPowerRegs(uint8_t onOff);
 void promiscuous(uint8_t onOff);
-void maybeInterrupts();
 void RF_select();
 void RF_unselect();
 rfHeader* data_ready();
-uint8_t receiveDone();
 uint8_t simpleCRC(uint8_t *array, uint8_t length);
-
 #endif
 

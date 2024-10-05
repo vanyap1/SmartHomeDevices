@@ -21,19 +21,18 @@ volatile uint8_t ACK_REQUESTED;
 volatile uint8_t ACK_RECEIVED;             // should be polled immediately after sending a packet with ACK request
 volatile int16_t RSSI;                     // most accurate RSSI during reception (closest to the reception)
 volatile uint8_t mode = RF69_MODE_STANDBY; // should be protected?
-volatile uint8_t inISR = 0; 
+volatile uint8_t inISR = 0;
 uint8_t isRFM69HW = 1;                     // if RFM69HW model matches high power enable possible
 uint8_t address;                           //nodeID
 uint8_t powerLevel = 20;
 uint8_t promiscuousMode = 0;
 uint8_t rfDebugStr[128];
 
-unsigned long millis_current;
 rfHeader rfRxHeader;
 
 // freqBand must be selected from 315, 433, 868, 915
 uint8_t rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID)
-{	
+{
 	RF_HW_Reset();
 	uint8_t tmp_data = readReg(REG_VERSION);
 	//tmp_data = readReg(REG_OPMODE);
@@ -79,74 +78,32 @@ uint8_t rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID)
 	writeReg(REG_OPMODE, RF_OPMODE_RECEIVER);
 	
 	
-    //encrypt(0);
-    //setHighPower(isRFM69HW);        // called regardless if it's a RFM69W or RFM69HW
-    //setMode(RF69_MODE_STANDBY);
-    //while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00);
+	//encrypt(0);
+	//setHighPower(isRFM69HW);        // called regardless if it's a RFM69W or RFM69HW
+	//setMode(RF69_MODE_STANDBY);
+	//while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00);
 
-    //address = nodeID;
-    //setAddress(address);            // setting this node id
-    //setNetwork(networkID);
+	//address = nodeID;
+	//setAddress(address);            // setting this node id
+	//setNetwork(networkID);
 	return tmp_data;
 }
 
 // set this node's address
 void setAddress(uint8_t addr)
 {
-    writeReg(REG_NODEADRS, addr);
+	writeReg(REG_NODEADRS, addr);
 }
 
 // set network address
 void setNetwork(uint8_t networkID)
 {
-    writeReg(REG_SYNCVALUE2, networkID);
+	writeReg(REG_SYNCVALUE2, networkID);
 }
 
-uint8_t canSend()
-{
-    if (mode == RF69_MODE_RX && PAYLOADLEN == 0 && readRSSI(0) < CSMA_LIMIT) // if signal stronger than -100dBm is detected assume channel activity
-    {
-        setMode(RF69_MODE_STANDBY);
-        return 1;
-    }
-    return 0;
-}
 
-// Transmit data
-//void send(uint8_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t requestACK)
-//{
-    //writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
-    ////millis_current = millis();
-	//delay_ms(10);
-  //
-	//uint8_t loops = 5;
-	//while (!canSend() || !loops ){ 
-		//receiveDone();
-		//delay_ms(1000);
-		//loops--;
-		//}//                         <<<<Need to optimize to freezing protection
-    ////sendFrame(toAddress, buffer, bufferSize, requestACK, 0);
-//}
 
-// check whether an ACK was requested in the last received packet (non-broadcasted packet)
-uint8_t ACKRequested() 
-{
-    return ACK_REQUESTED && (TARGETID != RF69_BROADCAST_ADDR);
-}
 
-// should be called immediately after reception in case sender wants ACK
-void sendACK(const void* buffer, uint8_t bufferSize)
-{
-    ACK_REQUESTED = 0;   // TWS added to make sure we don't end up in a timing race and infinite loop sending Acks
-    uint8_t sender = SENDERID;
-    int16_t _RSSI = RSSI; // save payload received RSSI value
-    writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
-   
-    while (!canSend()) receiveDone();
-    SENDERID = sender;    // TWS: Restore SenderID after it gets wiped out by receiveDone() n.b. actually now there is no receiveDone() :D
-    //sendFrame(sender, buffer, bufferSize, 0, 1);
-    RSSI = _RSSI; // restore payload RSSI
-}
 
 // set *transmit/TX* output power: 0=min, 31=max
 // this results in a "weaker" transmitted signal, and directly results in a lower RSSI at the receiver
@@ -157,324 +114,330 @@ void sendACK(const void* buffer, uint8_t bufferSize)
 //       - for RFM69HW the range is from 0-31 [5dBm to 20dBm]  (PA1 & PA2 on PA_BOOST pin & high Power PA settings - see section 3.3.7 in datasheet, p22)
 void setPowerLevel(uint8_t powerLevel)
 {
-    uint8_t _powerLevel = powerLevel;
-    if (isRFM69HW==1) _powerLevel /= 2;
-    writeReg(REG_PALEVEL, (readReg(REG_PALEVEL) & 0xE0) | _powerLevel);
+	uint8_t _powerLevel = powerLevel;
+	if (isRFM69HW==1) _powerLevel /= 2;
+	writeReg(REG_PALEVEL, (readReg(REG_PALEVEL) & 0xE0) | _powerLevel);
 	readReg(REG_PALEVEL);
 }
 
 //put transceiver in sleep mode to save battery - to wake or resume receiving just call receiveDone()
-void RF_sleep() 
+void RF_sleep()
 {
-    setMode(RF69_MODE_SLEEP);
+	setMode(RF69_MODE_SLEEP);
 }
 
 uint8_t readTemperature(uint8_t calFactor) // returns centigrade
 {
-    setMode(RF69_MODE_STANDBY);
-    writeReg(REG_TEMP1, RF_TEMP1_MEAS_START);
-    while ((readReg(REG_TEMP1) & RF_TEMP1_MEAS_RUNNING));
-    return ~readReg(REG_TEMP2) + COURSE_TEMP_COEF + calFactor; // 'complement' corrects the slope, rising temp = rising val
+	setMode(RF69_MODE_STANDBY);
+	writeReg(REG_TEMP1, RF_TEMP1_MEAS_START);
+	while ((readReg(REG_TEMP1) & RF_TEMP1_MEAS_RUNNING));
+	return ~readReg(REG_TEMP2) + COURSE_TEMP_COEF + calFactor; // 'complement' corrects the slope, rising temp = rising val
 } // COURSE_TEMP_COEF puts reading in the ballpark, user can add additional correction
 
 // return the frequency (in Hz)
 uint32_t getFrequency()
 {
-    return RF69_FSTEP * (((uint32_t) readReg(REG_FRFMSB) << 16) + ((uint16_t) readReg(REG_FRFMID) << 8) + readReg(REG_FRFLSB));
+	return RF69_FSTEP * (((uint32_t) readReg(REG_FRFMSB) << 16) + ((uint16_t) readReg(REG_FRFMID) << 8) + readReg(REG_FRFLSB));
 }
 
 // set the frequency (in Hz)
 void setFrequency(uint32_t freqHz)
 {
-    uint8_t oldMode = mode;
-    if (oldMode == RF69_MODE_TX) {
-        setMode(RF69_MODE_RX);
-    }
-    freqHz /= RF69_FSTEP; // divide down by FSTEP to get FRF
-    writeReg(REG_FRFMSB, freqHz >> 16);
-    writeReg(REG_FRFMID, freqHz >> 8);
-    writeReg(REG_FRFLSB, freqHz);
-    if (oldMode == RF69_MODE_RX) {
-        setMode(RF69_MODE_SYNTH);
-    }
-    setMode(oldMode);
+	uint8_t oldMode = mode;
+	if (oldMode == RF69_MODE_TX) {
+		setMode(RF69_MODE_RX);
+	}
+	freqHz /= RF69_FSTEP; // divide down by FSTEP to get FRF
+	writeReg(REG_FRFMSB, freqHz >> 16);
+	writeReg(REG_FRFMID, freqHz >> 8);
+	writeReg(REG_FRFLSB, freqHz);
+	if (oldMode == RF69_MODE_RX) {
+		setMode(RF69_MODE_SYNTH);
+	}
+	setMode(oldMode);
 }
 
 // Read byte from register
 uint8_t readReg(uint8_t addr)
 {
-    RF_select();
-    SPI_write(addr & 0x7F);
-    uint8_t regval = SPI_read();
-    RF_unselect();
-    return regval;
+	RF_select();
+	SPI_write(addr & 0x7F);
+	uint8_t regval = SPI_read();
+	RF_unselect();
+	return regval;
 }
 
 // Write byte to register
 void writeReg(uint8_t addr, uint8_t value)
 {
-    RF_select();
-    SPI_write(addr | 0x80);
-    SPI_write(value);
-    RF_unselect();
+	RF_select();
+	SPI_write(addr | 0x80);
+	SPI_write(value);
+	RF_unselect();
 }
 
 // To enable encryption: radio.encrypt("ABCDEFGHIJKLMNOP");
 // To disable encryption: encrypt(null) or encrypt(0)
 // KEY HAS TO BE 16 bytes !!!
-void encrypt(const char* key) 
+void encrypt(const char* key)
 {
-    setMode(RF69_MODE_STANDBY);
-    
+	setMode(RF69_MODE_STANDBY);
+	
 	RF_select();
 	if (key != 0)
-    {
-        
-        SPI_write(REG_AESKEY1 | 0x80);
-        for (uint8_t i = 0; i < 16; i++)
-            //debug_var = key[i];
-			SPI_write(key[i]);
-        
-    }
+	{
+		
+		SPI_write(REG_AESKEY1 | 0x80);
+		for (uint8_t i = 0; i < 16; i++)
+		//debug_var = key[i];
+		SPI_write(key[i]);
+		
+	}
 	RF_unselect();
 	_delay_ms(10);
-    writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFE) | (key ? 1:0));
+	writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFE) | (key ? 1:0));
 	
 }
 
 void setMode(uint8_t newMode)
 {
-    if (newMode == mode)
-    return;
+	if (newMode == mode)
+	return;
 
-    switch (newMode)
-    {
-        case RF69_MODE_TX:
-            writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_TRANSMITTER);
-            if (isRFM69HW) setHighPowerRegs(1);
-            break;
-        case RF69_MODE_RX:
-            writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_RECEIVER);
-            if (isRFM69HW) setHighPowerRegs(0);
-            break;
-        case RF69_MODE_SYNTH:
-            writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SYNTHESIZER);
-            break;
-        case RF69_MODE_STANDBY:
-            writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_STANDBY);
-            break;
-        case RF69_MODE_SLEEP:
-            writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SLEEP);
-            break;
-        default:
-        return;
-    }
-    // we are using packet mode, so this check is not really needed
-    // but waiting for mode ready is necessary when going from sleep because the FIFO may not be immediately available from previous mode
-    while (mode == RF69_MODE_SLEEP && (readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
-    mode = newMode;
+	switch (newMode)
+	{
+		case RF69_MODE_TX:
+		writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_TRANSMITTER);
+		if (isRFM69HW) setHighPowerRegs(1);
+		break;
+		case RF69_MODE_RX:
+		writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_RECEIVER);
+		if (isRFM69HW) setHighPowerRegs(0);
+		break;
+		case RF69_MODE_SYNTH:
+		writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SYNTHESIZER);
+		break;
+		case RF69_MODE_STANDBY:
+		writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_STANDBY);
+		break;
+		case RF69_MODE_SLEEP:
+		writeReg(REG_OPMODE, (readReg(REG_OPMODE) & 0xE3) | RF_OPMODE_SLEEP);
+		break;
+		default:
+		return;
+	}
+	// we are using packet mode, so this check is not really needed
+	// but waiting for mode ready is necessary when going from sleep because the FIFO may not be immediately available from previous mode
+	while (mode == RF69_MODE_SLEEP && (readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
+	mode = newMode;
 }
-    
+
 // internal function
 void setHighPowerRegs(uint8_t onOff)
 {
-    if(onOff==1)
-    {
-    writeReg(REG_TESTPA1, 0x5D);
-    writeReg(REG_TESTPA2, 0x7C);
-    }
-    else
-    {
-        writeReg(REG_TESTPA1, 0x55);
-        writeReg(REG_TESTPA2, 0x70);
-    }
+	if(onOff==1)
+	{
+		writeReg(REG_TESTPA1, 0x5D);
+		writeReg(REG_TESTPA2, 0x7C);
+	}
+	else
+	{
+		writeReg(REG_TESTPA1, 0x55);
+		writeReg(REG_TESTPA2, 0x70);
+	}
 }
-    
+
 // for RFM69HW only: you must call setHighPower(1) after rfm69_init() or else transmission won't work
-void setHighPower(uint8_t onOff) 
+void setHighPower(uint8_t onOff)
 {
-    isRFM69HW = onOff;
-    writeReg(REG_OCP, isRFM69HW ? RF_OCP_OFF : RF_OCP_ON);
+	isRFM69HW = onOff;
+	writeReg(REG_OCP, isRFM69HW ? RF_OCP_OFF : RF_OCP_ON);
 
-    if (isRFM69HW == 1) // turning ON
-        writeReg(REG_PALEVEL, (readReg(REG_PALEVEL) & 0x1F) | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON); // enable P1 & P2 amplifier stages
-    else
-        writeReg(REG_PALEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | powerLevel); // enable P0 only
+	if (isRFM69HW == 1) // turning ON
+	writeReg(REG_PALEVEL, (readReg(REG_PALEVEL) & 0x1F) | RF_PALEVEL_PA1_ON | RF_PALEVEL_PA2_ON); // enable P1 & P2 amplifier stages
+	else
+	writeReg(REG_PALEVEL, RF_PALEVEL_PA0_ON | RF_PALEVEL_PA1_OFF | RF_PALEVEL_PA2_OFF | powerLevel); // enable P0 only
 }
 
-// get the received signal strength indicator (RSSI)
 int16_t readRSSI(uint8_t forceTrigger)
 {
-    int16_t rssi = 0;
-    if (forceTrigger==1)
-    {
-        // RSSI trigger not needed if DAGC is in continuous mode
-        writeReg(REG_RSSICONFIG, RF_RSSI_START);
-        while ((readReg(REG_RSSICONFIG) & RF_RSSI_DONE) == 0x00); // wait for RSSI_Ready
-    }
-    rssi = -readReg(REG_RSSIVALUE);
-    rssi >>= 1;
-    return rssi;
+	int16_t rssi = 0;
+	uint16_t rssi_timeout = 1000;
+	if (forceTrigger == 1){
+		writeReg(REG_RSSICONFIG, RF_RSSI_START);
+		while ((readReg(REG_RSSICONFIG) & RF_RSSI_DONE) == 0x00)
+		{
+			rssi_timeout--;
+			if (rssi_timeout == 0)
+			{
+				return -999;
+			}
+			_delay_us(10);
+		}
+	}
+	rssi = -readReg(REG_RSSIVALUE);
+	rssi >>= 1; 
+	return rssi;
+}
+void clearFIFO()
+{
+	
+	writeReg(REG_OPMODE, RF69_MODE_STANDBY);
+	_delay_ms(1);
+	while (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFONOTEMPTY)
+	{
+		readReg(REG_FIFO);
+	}
+	setMode(RF69_MODE_RX);
 }
 
 // internal function
 //void sendFrame(uint8_t address, uint8_t toAddress, uint8_t opcode, uint8_t extraArg, const void* buffer, uint8_t bufferSize)
 void sendFrame(rfHeader * txHeader, const void* buffer)
 {
-    setMode(RF69_MODE_SLEEP); // turn off receiver to prevent reception while filling fifo
-    while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
-    writeReg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00); // DIO0 is "Packet Sent"
-    if (txHeader->rxtxBuffLenght > RF69_MAX_DATA_LEN)
-        txHeader->rxtxBuffLenght = RF69_MAX_DATA_LEN;
-    // write to FIFO
-    RF_select(); //enable data transfer
-    SPI_write(REG_FIFO | 0x80);
-    SPI_write(txHeader->rxtxBuffLenght + 4);
-    SPI_write(txHeader->destinationAddr);
-    SPI_write(txHeader->senderAddr);
-    SPI_write(txHeader->opcode);
-    SPI_write(txHeader->dataCRC);
-  
-	RFM69_WriteBuff((void *)buffer, txHeader->rxtxBuffLenght);
-    RF_unselect(); 
-	setMode(RF69_MODE_TX);
-	_delay_ms(1);
-	uint16_t tx_timeout = RF69_TX_LIMIT_MS;
-	while (readReg(REG_IRQFLAGS1) != RF_TX_DONE){
-		//sprintf(rfDebugStr, "REG_IRQFLAGS1=:%02X; %02d\n\r", readReg(REG_IRQFLAGS1), readReg(REG_IRQFLAGS1) & RF_TX_DONE);
-		//DebugSerialWrite(rfDebugStr, sizeof(rfDebugStr));
-		tx_timeout--;
-		if (tx_timeout==0){
-			break;
+	setMode(RF69_MODE_SLEEP);
+	uint16_t mode_ready_timeout = 1000;
+	while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00) {
+		_delay_ms(1);
+		mode_ready_timeout--;
+		if (mode_ready_timeout == 0) {
+			#ifdef DEBUG
+			//DebugSerialWrite("Timeout waiting for ModeReady\r\n", 31);
+			#endif
+			return;
 		}
-		_delay_us(10);	
 	}
-	
-	//while (readReg(REG_IRQFLAGS1) == 0x00);
+	if (txHeader->rxtxBuffLenght > RF69_MAX_DATA_LEN)
+	txHeader->rxtxBuffLenght = RF69_MAX_DATA_LEN;
+	RF_select();
+	SPI_write(REG_FIFO | 0x80);
+	SPI_write(txHeader->rxtxBuffLenght + 5);
+	SPI_write(txHeader->destinationAddr);
+	SPI_write(txHeader->senderAddr);
+	SPI_write(txHeader->opcode);
+	SPI_write(txHeader->dataCRC);
 
+	RFM69_WriteBuff((void *)buffer, txHeader->rxtxBuffLenght);
+	RF_unselect();
+	setMode(RF69_MODE_TX);
+	uint16_t tx_timeout = RF69_TX_LIMIT_MS;
+	while ((readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PACKETSENT) == 0) {
+		tx_timeout--;
+		if (tx_timeout == 0) {
+			#ifdef DEBUG
+			//DebugSerialWrite("Timeout waiting for PacketSent\r\n", 33);
+			#endif
+			return;
+		}
+		_delay_us(100);
+	}
+	#ifdef DEBUG
+	sprintf(rfDebugStr, "REG_IRQFLAGS=:%02X; %02X \r\n", readReg(REG_IRQFLAGS1), readReg(REG_IRQFLAGS2));
+	//DebugSerialWrite(rfDebugStr, strlen(rfDebugStr));
+	#endif
 	setMode(RF69_MODE_RX);
 }
+
 
 // Calibrate RC
 void rcCalibration()
 {
-    writeReg(REG_OSC1, RF_OSC1_RCCAL_START);
-    while ((readReg(REG_OSC1) & RF_OSC1_RCCAL_DONE) == 0x00);
+	writeReg(REG_OSC1, RF_OSC1_RCCAL_START);
+	while ((readReg(REG_OSC1) & RF_OSC1_RCCAL_DONE) == 0x00);
 }
 
-uint8_t sendWithRetry(uint8_t toAddress, const void* buffer, uint8_t bufferSize, uint8_t retries, uint8_t retryWaitTime)
-{
-    for (uint8_t i = 0; i <= retries; i++)
-    {
-        //send(toAddress, buffer, bufferSize, 1);
-        _delay_ms(50);
-        {
-            if (ACKReceived(toAddress)){
-                return 1;
-            }
-        }
-    }
-    return 0;
-}
 
-// should be polled immediately after sending a packet with ACK request
-uint8_t ACKReceived(uint8_t fromNodeID)
-{
-    if (receiveDone())
-        return (SENDERID == fromNodeID || fromNodeID == RF69_BROADCAST_ADDR) && ACK_RECEIVED;
-    return 0;
-}
 
-// checks if a packet was received and/or puts transceiver in receive (ie RX or listen) mode
-uint8_t receiveDone()
-{
-    //cli();
 
-    if (mode == RF69_MODE_RX && PAYLOADLEN > 0)
-    {
-        setMode(RF69_MODE_STANDBY); // enables interrupts
-        return 1;
-    }
-    else if (mode == RF69_MODE_RX) // already in RX no payload yet
-    {
-       // sei(); // explicitly re-enable interrupts
-        return 0;
-    }
-    receiveBegin();
-    //sei();
-    return 0;
-}
 
 // internal function
 void receiveBegin()
 {
-    DATALEN = 0;
-    SENDERID = 0;
-    TARGETID = 0;
-    PAYLOADLEN = 0;
-    ACK_REQUESTED = 0;
-    ACK_RECEIVED = 0;
-    RSSI = 0;
-    if (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY)
-    writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
-    writeReg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_01); // set DIO0 to "PAYLOADREADY" in receive mode
-    setMode(RF69_MODE_RX);
+	DATALEN = 0;
+	SENDERID = 0;
+	TARGETID = 0;
+	PAYLOADLEN = 0;
+	ACK_REQUESTED = 0;
+	ACK_RECEIVED = 0;
+	RSSI = 0;
+	if (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY)
+	writeReg(REG_PACKETCONFIG2, (readReg(REG_PACKETCONFIG2) & 0xFB) | RF_PACKET2_RXRESTART); // avoid RX deadlocks
+	writeReg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_01); // set DIO0 to "PAYLOADREADY" in receive mode
+	setMode(RF69_MODE_RX);
 }
 
 // 1  = disable filtering to capture all frames on network
 // 0 = enable node/broadcast filtering to capture only frames sent to this/broadcast address
 void promiscuous(uint8_t onOff)
 {
-    promiscuousMode = onOff;
-    if(promiscuousMode==0)
-        writeReg(REG_PACKETCONFIG1, (readReg(REG_PACKETCONFIG1) & 0xF9) | RF_PACKET1_ADRSFILTERING_NODEBROADCAST);
-    else
-        writeReg(REG_PACKETCONFIG1, (readReg(REG_PACKETCONFIG1) & 0xF9) | RF_PACKET1_ADRSFILTERING_OFF);    
+	promiscuousMode = onOff;
+	if(promiscuousMode==0)
+	writeReg(REG_PACKETCONFIG1, (readReg(REG_PACKETCONFIG1) & 0xF9) | RF_PACKET1_ADRSFILTERING_NODEBROADCAST);
+	else
+	writeReg(REG_PACKETCONFIG1, (readReg(REG_PACKETCONFIG1) & 0xF9) | RF_PACKET1_ADRSFILTERING_OFF);
 }
 
-// Only reenable interrupts if we're not being called from the ISR
-void maybeInterrupts()
-{
-    //if (!inISR) sei();
-}
 
 // Enable SPI transfer
 void RF_select()
 {
-    RFM_69_sel(false);
+	RFM_69_sel(false);
 }
 
 // Disable SPI transfer
 void RF_unselect()
 {
-     RFM_69_sel(true);
+	RFM_69_sel(true);
 }
 
 // Interrupt Service Routine
-
- rfHeader* data_ready(){
-	 
-	 if (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY){
-		 memset(DATA, 0, sizeof(DATA));
-		 writeReg(REG_OPMODE , RF69_MODE_STANDBY);
-		 RF_select();
-		 SPI_write(REG_FIFO);
-		 RFM69_ReadBuff(&rfRxHeader, 5);
-		 rfRxHeader.rxtxBuffLenght -= 5;
-		 RFM69_ReadBuff(&DATA, rfRxHeader.rxtxBuffLenght+1);
-		 RF_unselect();
-		 writeReg(REG_DIOMAPPING1 , 0x40);
-		 writeReg(REG_OPMODE , RF69_ListenAbort);
-		 rfRxHeader.rssi = readRSSI(0);
-		 setMode(RF69_MODE_RX);
-		 rfRxHeader.dataValid=1;
-		 return &rfRxHeader;
-		 }else{
-		 rfRxHeader.dataValid=0;
-		 return &rfRxHeader;
-	 }
- }
-
+/*
+SPI_write(txHeader->rxtxBuffLenght + 5);
+SPI_write(txHeader->destinationAddr);
+SPI_write(txHeader->senderAddr);
+SPI_write(txHeader->opcode);
+SPI_write(txHeader->dataCRC);
+*/
+rfHeader* data_ready() {
+	uint8_t tmpRxBuff[5];
+	if (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY) {
+		memset(DATA, 0, sizeof(DATA));
+		writeReg(REG_OPMODE, RF69_MODE_STANDBY);
+		RF_select();
+		SPI_write(REG_FIFO);
+		RFM69_ReadBuff(&tmpRxBuff, sizeof(tmpRxBuff));
+		rfRxHeader.rxtxBuffLenght = tmpRxBuff[0] - sizeof(tmpRxBuff);
+		rfRxHeader.destinationAddr = tmpRxBuff[1];
+		rfRxHeader.senderAddr = tmpRxBuff[2];
+		rfRxHeader.opcode = tmpRxBuff[3];
+		rfRxHeader.dataCRC = tmpRxBuff[4];
+		if (rfRxHeader.rxtxBuffLenght >= (RF69_MAX_DATA_LEN - sizeof(tmpRxBuff))) {
+			rfRxHeader.rxtxBuffLenght = RF69_MAX_DATA_LEN - sizeof(tmpRxBuff);
+			} else if (rfRxHeader.rxtxBuffLenght <= 0) {
+			rfRxHeader.dataValid = 0;
+			RF_unselect();
+			return &rfRxHeader;
+			} else {
+			rfRxHeader.dataValid = 1;
+		}
+		RFM69_ReadBuff(&DATA, rfRxHeader.rxtxBuffLenght);
+		RF_unselect();
+		uint8_t calculatedCRC = simpleCRC(DATA, rfRxHeader.rxtxBuffLenght);
+		if (calculatedCRC != rfRxHeader.dataCRC) {
+			rfRxHeader.dataValid = 0;
+			RF_unselect();
+			return &rfRxHeader;
+		}
+		writeReg(REG_DIOMAPPING1, 0x40);
+		writeReg(REG_OPMODE, RF69_ListenAbort);
+		rfRxHeader.rssi = readRSSI(0);
+		setMode(RF69_MODE_RX);
+		return &rfRxHeader;
+		} else {
+		rfRxHeader.dataValid = 0;
+		return &rfRxHeader;
+	}
+}
 
 uint8_t simpleCRC(uint8_t *array, uint8_t length) {
 	uint8_t checksum = 0;

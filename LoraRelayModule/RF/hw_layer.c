@@ -33,13 +33,13 @@ ISR(INT0_vect){
 
 
 void HwInitIO(){
-	gpio_set_pin_level(&rfMISO, true);
+	//gpio_set_pin_level(&rfMISO, true);
 	gpio_set_pin_direction(&rfSelect , PORT_DIR_IN);
 	
-	gpio_set_pin_level(&rfSelect, true);
+	//gpio_set_pin_level(&rfSelect, true);
 	gpio_set_pin_direction(&rfSelect , PORT_DIR_OUT);
 	
-	gpio_set_pin_level(&rfReset, true);
+	//gpio_set_pin_level(&rfReset, true);
 	gpio_set_pin_direction(&rfReset , PORT_DIR_OUT);
 	
 	
@@ -53,11 +53,11 @@ void HwInitIO(){
 }
 
 void RF_HW_Reset(){
-	_delay_ms(150);
+	
 	gpio_set_pin_level(&rfReset, true);
-	_delay_ms(10);
+	_delay_us(200);
 	gpio_set_pin_level(&rfReset, false);
-	_delay_ms(100);
+	_delay_ms(6);
 }
 
 

@@ -317,22 +317,22 @@ int16_t readRSSI(uint8_t forceTrigger)
 //void sendFrame(uint8_t address, uint8_t toAddress, uint8_t opcode, uint8_t extraArg, const void* buffer, uint8_t bufferSize)
 void sendFrame(rfHeader * txHeader, const void* buffer)
 {
-    setMode(RF69_MODE_SLEEP); // turn off receiver to prevent reception while filling fifo
-    while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
-    writeReg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00); // DIO0 is "Packet Sent"
-    if (txHeader->rxtxBuffLenght > RF69_MAX_DATA_LEN)
-        txHeader->rxtxBuffLenght = RF69_MAX_DATA_LEN;
-    // write to FIFO
-    RF_select(); //enable data transfer
-    SPI_write(REG_FIFO | 0x80);
-    SPI_write(txHeader->rxtxBuffLenght + 4);
-    SPI_write(txHeader->destinationAddr);
-    SPI_write(txHeader->senderAddr);
-    SPI_write(txHeader->opcode);
-    SPI_write(txHeader->dataCRC);
-  
+	setMode(RF69_MODE_SLEEP); // turn off receiver to prevent reception while filling fifo
+	while ((readReg(REG_IRQFLAGS1) & RF_IRQFLAGS1_MODEREADY) == 0x00); // wait for ModeReady
+	writeReg(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00); // DIO0 is "Packet Sent"
+	if (txHeader->rxtxBuffLenght > RF69_MAX_DATA_LEN)
+	txHeader->rxtxBuffLenght = RF69_MAX_DATA_LEN;
+	// write to FIFO
+	RF_select(); //enable data transfer
+	SPI_write(REG_FIFO | 0x80);
+	SPI_write(txHeader->rxtxBuffLenght + 5);
+	SPI_write(txHeader->destinationAddr);
+	SPI_write(txHeader->senderAddr);
+	SPI_write(txHeader->opcode);
+	SPI_write(txHeader->dataCRC);
+	
 	RFM69_WriteBuff((void *)buffer, txHeader->rxtxBuffLenght);
-    RF_unselect(); 
+	RF_unselect();
 	setMode(RF69_MODE_TX);
 	delay_ms(1);
 	uint16_t tx_timeout = RF69_TX_LIMIT_MS;
@@ -343,7 +343,7 @@ void sendFrame(rfHeader * txHeader, const void* buffer)
 		if (tx_timeout==0){
 			break;
 		}
-		delay_us(10);	
+		delay_us(10);
 	}
 	
 	//while (readReg(REG_IRQFLAGS1) == 0x00);
@@ -447,24 +447,42 @@ void RF_unselect()
 }
 
 // Interrupt Service Routine
-
- rfHeader* data_ready(){
-	 
+/*
+SPI_write(txHeader->rxtxBuffLenght + 5);
+SPI_write(txHeader->destinationAddr);
+SPI_write(txHeader->senderAddr);
+SPI_write(txHeader->opcode);
+SPI_write(txHeader->dataCRC);
+*/
+rfHeader* data_ready(){
+	uint8_t tmpRxBuff[5];
 	if (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_PAYLOADREADY){
-		writeReg(REG_OPMODE , RF69_MODE_STANDBY);		 
+		memset(DATA, 0, sizeof(DATA));
+		writeReg(REG_OPMODE , RF69_MODE_STANDBY);
 		RF_select();
 		SPI_write(REG_FIFO);
-		RFM69_ReadBuff(&rfRxHeader, 5);
-		rfRxHeader.rxtxBuffLenght -= 5;
+		
+		RFM69_ReadBuff(&tmpRxBuff, sizeof(tmpRxBuff));
+		rfRxHeader.rxtxBuffLenght = tmpRxBuff[0] - sizeof(tmpRxBuff);
+		rfRxHeader.destinationAddr = tmpRxBuff[1];
+		rfRxHeader.senderAddr = tmpRxBuff[2];
+		rfRxHeader.opcode = tmpRxBuff[3];
+		rfRxHeader.dataCRC = tmpRxBuff[4];
+		
+		if(rfRxHeader.rxtxBuffLenght >= (RF69_MAX_DATA_LEN-sizeof(tmpRxBuff))){
+			rfRxHeader.rxtxBuffLenght = RF69_MAX_DATA_LEN-sizeof(tmpRxBuff);
+			}else{
+			rfRxHeader.dataValid=1;
+		}
 		RFM69_ReadBuff(&DATA, rfRxHeader.rxtxBuffLenght);
 		RF_unselect();
 		writeReg(REG_DIOMAPPING1 , 0x40);
-		writeReg(REG_OPMODE , RF69_ListenAbort); 
+		writeReg(REG_OPMODE , RF69_ListenAbort);
 		rfRxHeader.rssi = readRSSI(0);
 		setMode(RF69_MODE_RX);
-		rfRxHeader.dataValid=1;
+		
 		return &rfRxHeader;
-	}else{
+		}else{
 		rfRxHeader.dataValid=0;
 		return &rfRxHeader;
 	}

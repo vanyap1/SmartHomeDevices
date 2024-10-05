@@ -38,7 +38,7 @@ void spi0_init(){
 	//DDRC |= (1 << DDC1);
 	//DDRE |= (1 << DDE3);
 	SPCR0 |= (1 << SPIE) | (1 << SPE) | (0 << DORD) | (1 << MSTR)  | (0 << CPOL) | (0 << CPHA) | (0b00 << SPR0);
-	SPCR0 |= (0 << MSTR);
+	//SPCR0 |= (0 << MSTR);
 	
 	
 	//Bit 7 – SPIE1: SPI1 Interrupt Enable

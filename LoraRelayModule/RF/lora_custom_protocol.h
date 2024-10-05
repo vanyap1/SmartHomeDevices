@@ -24,12 +24,17 @@
 #define MSG				0x82
 #define POWERBANK		0x83
 
-#define TX_MUTE			0
-#define TX_UNMUTE		1
-
+#define REPORTMSGTIME	3
 #define GPIO_CTRL		0x84		//reserved for lora relay module (Send with tis ID to module)
 #define GPIO_INFO		0x85		//reserved for lora relay module (Module will answer with this ID)
 #define GPIO_ALARM		0x86		//reserved for lora relay module (Alarm message)
+#define MAIN_UPS		0x12		//Home ups
+
+
+
+#define TX_MUTE			0
+#define TX_UNMUTE		1
+
 
 
 
