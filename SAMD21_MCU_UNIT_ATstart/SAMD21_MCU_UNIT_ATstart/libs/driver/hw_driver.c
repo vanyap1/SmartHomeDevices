@@ -14,12 +14,12 @@
 #include <hpl_pm_base.h>
 
 
-struct spi_m_sync_descriptor SPI_EXT;
-struct spi_m_sync_descriptor SPI_RF;
-struct spi_m_sync_descriptor SPI_ETH;
+struct spi_m_sync_descriptor SPI_EXT;		//SERCOM0
+struct spi_m_sync_descriptor SPI_RF;		//SERCOM1
+struct spi_m_sync_descriptor SPI_ETH;		//SERCOM5
 
-struct i2c_m_sync_desc I2C_RTC;
-struct i2c_m_sync_desc I2C_EXT;
+struct i2c_m_sync_desc I2C_RTC;				//SERCOM2
+struct i2c_m_sync_desc I2C_EXT;				//SERCOM4
 
 struct io_descriptor *ext_spi;
 struct io_descriptor *rf_spi;
@@ -37,6 +37,11 @@ uint8_t i2cIntCount = 0;
 uint8_t rtcIntCount = 0;
 uint8_t rfIntCount = 0;
 rfHeader* ptr_rfHeader;
+
+static void BTN_Handler(void);
+static void EXT_I2C_IRQ_int_Handler(void);
+static void I2C_RTC_Handler(void);
+static void RF_int_Handler(void);
 
 
 static void BTN_Handler(void){

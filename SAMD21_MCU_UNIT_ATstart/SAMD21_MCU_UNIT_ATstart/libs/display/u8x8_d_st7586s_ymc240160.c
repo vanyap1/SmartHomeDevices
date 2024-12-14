@@ -74,6 +74,8 @@ static const uint8_t u8x8_d_st7586s_ymc240160_flip1_seq[] = {
 };
 
 static const uint8_t u8x8_d_st7586s_ymc240160_init_seq[] = {
+//My SEQ 100x160
+
   U8X8_START_TRANSFER(),/* enable chip */
   U8X8_END_TRANSFER(),/* disable chip */
  // U8G_ESC_RST(1), /* hardware reset */

@@ -46,11 +46,9 @@ extern struct spi_m_sync_descriptor SPI_ETH;
 
 
 
-static void BTN_Handler(void);
+
 uint8_t GetBtnState(void);
-static void EXT_I2C_IRQ_int_Handler(void);
-static void I2C_RTC_Handler(void);
-static void RF_int_Handler(void);
+
 bool rf_isReady();
 rfHeader* rfMsgType(void);
 uint8_t EXT_I2C_IRQ_isReady(void);

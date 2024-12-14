@@ -37,7 +37,7 @@
 // <i> The SPI data transfer rate
 // <id> spi_master_baud_rate
 #ifndef CONF_SERCOM_0_SPI_BAUD
-#define CONF_SERCOM_0_SPI_BAUD 50000
+#define CONF_SERCOM_0_SPI_BAUD 5000000
 #endif
 
 // </h>
@@ -196,7 +196,7 @@
 // <i> The SPI data transfer rate
 // <id> spi_master_baud_rate
 #ifndef CONF_SERCOM_1_SPI_BAUD
-#define CONF_SERCOM_1_SPI_BAUD 50000
+#define CONF_SERCOM_1_SPI_BAUD 5000000
 #endif
 
 // </h>
@@ -338,7 +338,7 @@
 // <i> I2C Bus clock (SCL) speed measured in Hz
 // <id> i2c_master_baud_rate
 #ifndef CONF_SERCOM_2_I2CM_BAUD
-#define CONF_SERCOM_2_I2CM_BAUD 100000
+#define CONF_SERCOM_2_I2CM_BAUD 400000
 #endif
 
 // </h>
@@ -473,7 +473,7 @@
 // <i> I2C Bus clock (SCL) speed measured in Hz
 // <id> i2c_master_baud_rate
 #ifndef CONF_SERCOM_4_I2CM_BAUD
-#define CONF_SERCOM_4_I2CM_BAUD 100000
+#define CONF_SERCOM_4_I2CM_BAUD 400000
 #endif
 
 // </h>
@@ -625,7 +625,7 @@
 // <i> The SPI data transfer rate
 // <id> spi_master_baud_rate
 #ifndef CONF_SERCOM_5_SPI_BAUD
-#define CONF_SERCOM_5_SPI_BAUD 50000
+#define CONF_SERCOM_5_SPI_BAUD 5000000
 #endif
 
 // </h>

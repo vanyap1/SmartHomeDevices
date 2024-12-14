@@ -323,6 +323,7 @@
   <armgcc.compiler.symbols.DefSymbols>
     <ListValues>
       <Value>DEBUG</Value>
+      <Value>PRINTF_ADVANCED_ENABLE=1</Value>
     </ListValues>
   </armgcc.compiler.symbols.DefSymbols>
   <armgcc.compiler.directories.IncludePaths>
@@ -358,15 +359,16 @@
       <Value>../libs/sd_card</Value>
       <Value>../libs/spi_flash</Value>
       <Value>../libs/usb</Value>
+      <Value>../libs/bms</Value>
     </ListValues>
   </armgcc.compiler.directories.IncludePaths>
   <armgcc.compiler.optimization.level>Optimize debugging experience (-Og)</armgcc.compiler.optimization.level>
   <armgcc.compiler.optimization.PrepareFunctionsForGarbageCollection>True</armgcc.compiler.optimization.PrepareFunctionsForGarbageCollection>
   <armgcc.compiler.optimization.PrepareDataForGarbageCollection>True</armgcc.compiler.optimization.PrepareDataForGarbageCollection>
   <armgcc.compiler.optimization.EnableFastMath>True</armgcc.compiler.optimization.EnableFastMath>
+  <armgcc.compiler.optimization.EnableLongCalls>False</armgcc.compiler.optimization.EnableLongCalls>
   <armgcc.compiler.optimization.DebugLevel>Maximum (-g3)</armgcc.compiler.optimization.DebugLevel>
   <armgcc.compiler.warnings.AllWarnings>True</armgcc.compiler.warnings.AllWarnings>
-  <armgcc.linker.general.UseNewlibNano>True</armgcc.linker.general.UseNewlibNano>
   <armgcc.linker.libraries.Libraries>
     <ListValues>
       <Value>libm</Value>
@@ -797,6 +799,12 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="hri\hri_wdt_d21.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="libs\bms\bms_ina22x.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="libs\bms\bms_ina22x.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="libs\config\pin_config.h">
@@ -1316,6 +1324,7 @@
     <Folder Include="libs\ethernet\W5500" />
     <Folder Include="libs\display" />
     <Folder Include="libs\lora_rf" />
+    <Folder Include="libs\bms" />
     <Folder Include="libs\usb" />
     <Folder Include="libs\spi_flash" />
     <Folder Include="libs\sd_card" />

@@ -11,28 +11,38 @@
 #include "stdbool.h"
 #include "ff.h"
 #include "mem25lXX.h"
+#include "bms_ina22x.h"
 
 
 u8g2_t lcd;
 FATFS FatFs;
 FIL Fil;
 ramIDS spiFlash;
+powerData mainBattery;
+
 
 #define POWERBANKID		0x21
 #define VFDSCREEN		0x03
 #define DEVMODULE		0x22
 #define DEVMODULE2		0xFE
-#define DEVUSBHID		0xFD
+#define RADIOMODE		TX_UNMUTE
 
 
 #define NETWORKID		33
-#define NODEID			DEVUSBHID
+#define NODEID			POWERBANKID
 #define ALLNODES		0xfe
 #define SMARTSCREEN		0xf0
 #define RX_MODE			1
 #define RTC_SYNC		0x81
 #define MSG				0x82
 #define POWERBANK		0x83
+#define REPORTMSGTIME	3
+#define GPIO_CTRL		0x84		//reserved for lora relay module (Send with tis ID to module)
+#define GPIO_INFO		0x85		//reserved for lora relay module (Module will answer with this ID)
+#define GPIO_ALARM		0x86		//reserved for lora relay module (Alarm message)
+#define MAIN_UPS		0x12		//Home ups
+
+
 
 #define TX_MUTE			0
 #define TX_UNMUTE		1
@@ -40,14 +50,41 @@ ramIDS spiFlash;
 uint8_t txLen;
 uint8_t txCRC;
 rfHeader rfTxDataPack;
+uint8_t testMsg[65];
+uint8_t upsData[64];
 
 //#define ETHERNET
-#define  DISPLAY_VFD
+//#define  DISPLAY_VFD
 //#define  DISPLAY_OLED
-//#define  DISPLAY_LCD
+#define  DISPLAY_LCD
+#define I2C_USI
+
+
 uint8_t updateScreen = 1;
 uint32_t hidPacketCounter;
+uint32_t rfPacketCounter;
 uint8_t lcdMsg[64];
+
+#ifdef I2C_USI
+	#define BOARD_ADDR	 0x27
+	#define LCD_BLK			4
+	#define EXT_LED			3
+	#define EXT_SV1			2
+	#define EXT_SV2			1
+	#define EXT_SV3			0
+	uint8_t outputs_regs[] = {0x06, 0x07, 0xff};
+	uint8_t portValue[] = {0x02, 0xff, 0xff};
+	uint8_t keyValues[2];
+	uint8_t backLightTime = 10;
+	
+	#define INVERT_BIT(value, bitNumber) ((value) ^= (1 << (bitNumber)))
+	#define SET_BIT(value, bitNumber) ((value) |= (1 << (bitNumber)))
+	#define RESET_BIT(value, bitNumber) ((value) &= ~(1 << (bitNumber)))
+	#define GET_BIT(value, bitNumber) (((value) >> (bitNumber)) & 0x01)
+	#define BACKLIGHTTIME	10
+	
+#endif
+
 
 #ifdef ETHERNET
 	wiz_NetInfo netInfo = { .mac  = {0x20, 0xcf, 0xF0, 0x83, 0x78, 0x00}, // Mac address
@@ -148,9 +185,16 @@ int main(void)
 		u8g2_DrawStr(&lcd, 1, 17, (void *)"RX MODULE");
 		u8g2_SendBuffer(&lcd);
 		
-	#elif DISPLAY_LCD
-	
-	#elif DISPLAY_OLED
+	#elif defined(DISPLAY_LCD)
+		u8g2_Setup_st7586s_ymc240160_f(&lcd, U8G2_R0, vfd_spi, u8x8_avr_gpio_and_delay); // contrast: 80
+		u8g2_InitDisplay(&lcd);
+		u8g2_SetPowerSave(&lcd, 0);
+		u8g2_SetFlipMode(&lcd, 1);
+		u8g2_SetContrast(&lcd, 80); 
+		u8g2_ClearBuffer(&lcd);
+		u8g2_SendBuffer(&lcd);
+		
+	#elif defined(DISPLAY_OLED)	
 		u8g2_Setup_ssd1306_i2c_128x64_noname_f(&lcd, U8G2_R0, u8x8_byte_sw_i2c, u8x8_avr_gpio_and_delay);
 		u8g2_SetI2CAddress(&lcd, 0x3c);//3c
 		u8g2_InitDisplay(&lcd);
@@ -161,9 +205,14 @@ int main(void)
 		u8g2_SendBuffer(&lcd);
 	#endif
 	
-	ramGetIDS(&spiFlash);
+	#ifdef I2C_USI
+		I2C_write_batch(BOARD_ADDR, (uint8_t *)&outputs_regs, 3);
+	#endif
+	
+	chipGetIDS(&spiFlash);
 	
 	rfm69_init(868, NODEID, NETWORKID);
+	rcCalibration();
 	setHighPower(true);
 	
 	usb_HID_init();
@@ -192,21 +241,68 @@ int main(void)
 		//	hiddf_generic_register_callback(HIDDF_GENERIC_CB_READ, (FUNC_PTR)usb_device_cb_generic_out);
 		//	hiddf_generic_read(hid_generic_out_report, sizeof(hid_generic_out_report));
 		//}
+		u8g2_DrawRFrame(&lcd, 0, 0, 159 ,99, 0);
 		
 		
-		//delay_ms(500);
+		#ifdef I2C_USI
+			if (EXT_I2C_IRQ_isReady()){
+				//delay_ms(1);
+				I2C_read_batch(BOARD_ADDR, (uint8_t *)&keyValues, sizeof(keyValues));
+				
+				if (GET_BIT(keyValues[0], EXT_SV2) && GET_BIT(keyValues[0], EXT_SV3) == 0){
+					SET_BIT(portValue[1], LCD_BLK);
+					//backLightTime = BACKLIGHTTIME;
+				}
+				if (GET_BIT(keyValues[0], EXT_SV3) && GET_BIT(keyValues[0], EXT_SV2) == 0){
+					RESET_BIT(portValue[1], LCD_BLK);
+					//backLightTime = BACKLIGHTTIME;
+				}
+				if (GET_BIT(keyValues[0], EXT_SV1)==0){
+					INVERT_BIT(portValue[1], EXT_LED);
+					//backLightTime = BACKLIGHTTIME;
+				}
+				I2C_write_batch(BOARD_ADDR, (uint8_t *)&portValue, sizeof(portValue));
+				
+				//updateScreen = 1;
+			}
+		#endif
+				
+		
 		if (RTC_IRQ_Ready())
 		{
 			gpio_toggle_pin_level(RLD);
 			rtc_sync(&sys_rtc);
 			updateScreen = 1;
 			//sprintf(rtcData, "%02d:%02d:%02d", sys_rtc.hour, sys_rtc.minute, sys_rtc.second);
+			if(readReg(REG_IRQFLAGS1) == RF_IRQFLAGS1_MODEREADY)
+			{
+				//clearFIFO();
+				rfm69_init(868, NODEID, NETWORKID);
+				rcCalibration();
+				setHighPower(true);
+			}
 		}
 		
 		if (rf_isReady()) {
 			gpio_set_pin_level(GLD, true);
 			rfHeader* rfRxDataMsg=rfMsgType();
-			delay_us(100);
+			rfPacketCounter++;
+			switch(rfRxDataMsg->opcode) {
+				case MSG:
+				memcpy(&testMsg, DATA, rfRxDataMsg->rxtxBuffLenght);
+				//DebugSerialWrite(testMsg, strlen(testMsg));
+				break;
+				case RTC_SYNC:
+				memcpy(&sys_rtc, DATA, sizeof(sys_rtc));
+				rtc_set(&sys_rtc);
+				break;
+				
+				case MAIN_UPS:
+				memcpy(&mainBattery, (void *)DATA, sizeof(mainBattery));
+				break;
+				default:
+				delay_us(1);
+			}
 			gpio_set_pin_level(GLD, false);
 		}
 		
@@ -263,10 +359,19 @@ int main(void)
 		
 		if(updateScreen){
 			updateScreen = 0;
-			sprintf((void *)lcdMsg, "%02d:%02d:%02d. %d;  %d   ", sys_rtc.hour, sys_rtc.minute, sys_rtc.second, hidPacketCounter, hiddf_generic_is_enabled());
+			sprintf((void *)lcdMsg, "%02d:%02d:%02d. %d; %d; %d    ", sys_rtc.hour, sys_rtc.minute, sys_rtc.second, hidPacketCounter, hiddf_generic_is_enabled(), rfPacketCounter);
+			
+			u8g2_SetFont(&lcd, u8g2_font_smart_patrol_nbp_tr);
+			u8g2_DrawStr(&lcd, 3, 12, (char *)lcdMsg);
+			
 			u8g2_SetFont(&lcd, u8g2_font_courR08_tr);
-			//u8g2_SetFont(&lcd, u8g2_font_smart_patrol_nbp_tr);
-			u8g2_DrawStr(&lcd, 1, 8, (char *)lcdMsg);
+			u8g2_DrawLine(&lcd, 3, 77, 155, 77);
+			sprintf((void *)upsData, "%2.1fV,%2.1fA,%3.1fW      ", (float)mainBattery.voltage/1000, (float)mainBattery.current/1000, mainBattery.power);
+			u8g2_DrawStr(&lcd, 3, 87, (char *)upsData);
+			
+			sprintf((void *)upsData, "%dWh,%d%%", (int)mainBattery.energy, mainBattery.capacity);
+			u8g2_DrawStr(&lcd, 3, 95, (char *)upsData);
+			
 			
 			u8g2_SendBuffer(&lcd);
 			u8g2_ClearBuffer(&lcd);
