@@ -19,7 +19,7 @@
 // <e> Enable String Descriptors
 // <id> usb_hid_generic_str_en
 #ifndef CONF_USB_HID_GENERIC_STR_EN
-#define CONF_USB_HID_GENERIC_STR_EN 0
+#define CONF_USB_HID_GENERIC_STR_EN 1
 #endif
 // <s> Language IDs
 // <i> Language IDs in c format, split by comma (E.g., 0x0409 ...)
@@ -50,13 +50,13 @@
 // <0x0040=> 64 bytes
 // <id> usb_hid_generic_bmaxpksz0
 #ifndef CONF_USB_HID_GENERIC_BMAXPKSZ0
-#define CONF_USB_HID_GENERIC_BMAXPKSZ0 0x40
+#define CONF_USB_HID_GENERIC_BMAXPKSZ0 0x0040//0x40
 #endif
 
 // <o> idVender <0x0000-0xFFFF>
 // <id> usb_hid_generic_idvender
 #ifndef CONF_USB_HID_GENERIC_IDVENDER
-#define CONF_USB_HID_GENERIC_IDVENDER 0x3eb
+#define CONF_USB_HID_GENERIC_IDVENDER 0x03eb
 #endif
 
 // <o> idProduct <0x0000-0xFFFF>
@@ -74,7 +74,7 @@
 // <e> Enable string descriptor of iManufact
 // <id> usb_hid_generic_imanufact_en
 #ifndef CONF_USB_HID_GENERIC_IMANUFACT_EN
-#define CONF_USB_HID_GENERIC_IMANUFACT_EN 0
+#define CONF_USB_HID_GENERIC_IMANUFACT_EN 1
 #endif
 
 #ifndef CONF_USB_HID_GENERIC_IMANUFACT
@@ -96,7 +96,7 @@
 // <e> Enable string descriptor of iProduct
 // <id> usb_hid_generic_iproduct_en
 #ifndef CONF_USB_HID_GENERIC_IPRODUCT_EN
-#define CONF_USB_HID_GENERIC_IPRODUCT_EN 0
+#define CONF_USB_HID_GENERIC_IPRODUCT_EN 1
 #endif
 
 #ifndef CONF_USB_HID_GENERIC_IPRODUCT
@@ -147,7 +147,7 @@
 // <e> Enable string descriptor of iConfig
 // <id> usb_hid_generic_iconfig_en
 #ifndef CONF_USB_HID_GENERIC_ICONFIG_EN
-#define CONF_USB_HID_GENERIC_ICONFIG_EN 0
+#define CONF_USB_HID_GENERIC_ICONFIG_EN 1
 #endif
 
 #ifndef CONF_USB_HID_GENERIC_ICONFIG
@@ -176,7 +176,7 @@
 // <0xE0=> Self powered, support for remote wakeup
 // <id> usb_hid_generic_bmattri
 #ifndef CONF_USB_HID_GENERIC_BMATTRI
-#define CONF_USB_HID_GENERIC_BMATTRI 0x80
+#define CONF_USB_HID_GENERIC_BMATTRI 0xE0
 #endif
 
 // <o> bMaxPower <0x00-0xFF>
@@ -203,7 +203,7 @@
 // <o> HID Generic Report Descriptor Length <0x0000-0xFFFF>
 // <id> usb_hid_generic_report_desc_length
 #ifndef CONF_USB_HID_GENERIC_REPORT_LEN
-#define CONF_USB_HID_GENERIC_REPORT_LEN 53
+#define CONF_USB_HID_GENERIC_REPORT_LEN 53//62(mouse) 53 
 #endif
 
 #ifndef CONF_USB_HID_GENERIC_REPORT
@@ -212,6 +212,62 @@
 	    0x40, 0x81, 0x02, 0x09, 0x04, 0x09, 0x05, 0x15, 0x00, 0x26, 0xFF, 0x00, 0x75, 0x08, 0x95, 0x40, 0x91, 0x02,    \
 	    0x09, 0x06, 0x09, 0x07, 0x15, 0x00, 0x26, 0xFF, 0x00, 0x75, 0x08, 0x95, 0x04, 0xB1, 0x02, 0xC0
 #endif
+
+#ifndef CONF_USB_HID_GAMEPAD_REPORT
+#define CONF_USB_HID_GAMEPAD_REPORT                                                                                       \
+0x05, 0x01,        /* USAGE_PAGE (Generic Desktop) */                    \
+0x09, 0x05,        /* USAGE (Gamepad) */                               \
+0xA1, 0x01,        /* COLLECTION (Application) */                       \
+0x05, 0x09,        /* USAGE_PAGE (Button) */                           \
+0x19, 0x01,        /* USAGE_MINIMUM (Button 1) */                       \
+0x29, 0x08,        /* USAGE_MAXIMUM (Button 8) */                       \
+0x15, 0x00,        /* LOGICAL_MINIMUM (0) */                            \
+0x25, 0x01,        /* LOGICAL_MAXIMUM (1) */                            \
+0x75, 0x01,        /* REPORT_SIZE (1 bit per button) */                  \
+0x95, 0x08,        /* REPORT_COUNT (8 buttons) */                        \
+0x81, 0x02,        /* INPUT (Data, Var, Abs) */                         \
+0xC0               /* END_COLLECTION */
+
+
+
+#endif
+
+#ifndef CONF_USB_HID_MOUSE_REPORT
+#define CONF_USB_HID_MOUSE_REPORT                                                                           \
+0x05, 0x01,        /* Usage Page (Generic Desktop) */                                                  \
+0x09, 0x02,        /* Usage (Mouse) */                                                                 \
+0xA1, 0x01,        /* Collection (Application) */                                                     \
+0x09, 0x01,        /*   Usage (Pointer) */                                                             \
+0xA1, 0x00,        /*   Collection (Physical) */                                                      \
+0x05, 0x09,        /*     Usage Page (Button) */                                                      \
+0x19, 0x01,        /*     Usage Minimum (Button 1) */                                                 \
+0x29, 0x03,        /*     Usage Maximum (Button 3) */                                                 \
+0x15, 0x00,        /*     Logical Minimum (0) */                                                      \
+0x25, 0x01,        /*     Logical Maximum (1) */                                                      \
+0x95, 0x03,        /*     Report Count (3) */                                                         \
+0x75, 0x01,        /*     Report Size (1) */                                                          \
+0x81, 0x02,        /*     Input (Data, Variable, Absolute) */                                         \
+0x95, 0x01,        /*     Report Count (1) */                                                         \
+0x75, 0x05,        /*     Report Size (5) */                                                          \
+0x81, 0x03,        /*     Input (Constant, Variable, Absolute) - Padding */                          \
+0x05, 0x01,        /*     Usage Page (Generic Desktop) */                                             \
+0x09, 0x30,        /*     Usage (X) */                                                                \
+0x09, 0x31,        /*     Usage (Y) */                                                                \
+0x15, 0x81,        /*     Logical Minimum (-127) */                                                   \
+0x25, 0x7F,        /*     Logical Maximum (127) */                                                    \
+0x75, 0x08,        /*     Report Size (8) */                                                          \
+0x95, 0x02,        /*     Report Count (2) */                                                         \
+0x81, 0x06,        /*     Input (Data, Variable, Relative) */                                         \
+0x09, 0x38,        /*     Usage (Wheel) */                                                            \
+0x15, 0x81,        /*     Logical Minimum (-127) */                                                   \
+0x25, 0x7F,        /*     Logical Maximum (127) */                                                    \
+0x75, 0x08,        /*     Report Size (8) */                                                          \
+0x95, 0x01,        /*     Report Count (1) */                                                         \
+0x81, 0x06,        /*     Input (Data, Variable, Relative) */                                         \
+0xC0,              /*   End Collection */                                                             \
+0xC0               /* End Collection */
+#endif
+
 
 // <o> INTERRUPT IN Endpoint Address
 // <0x81=> EndpointAddress = 0x81
@@ -249,7 +305,7 @@
 // <id> usb_hid_generic_intout_epaddr
 // <i> Please make sure that the setting here is coincide with the endpoint setting in USB device driver.
 #ifndef CONF_USB_HID_GENERIC_INTOUT_EPADDR
-#define CONF_USB_HID_GENERIC_INTOUT_EPADDR 0x1
+#define CONF_USB_HID_GENERIC_INTOUT_EPADDR 0x01
 #endif
 
 // <o> INTERRUPT OUT Endpoint wMaxPacketSize

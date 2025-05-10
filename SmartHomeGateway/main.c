@@ -23,16 +23,23 @@ powerData mainBattery;
 #define DEVMODULE		0x22
 #define DEVMODULE2		0xFE
 #define DEVUSBHID		0xFD
+#define RFGATEWAY		0xFC
 
 
 #define NETWORKID		33
-#define NODEID			DEVUSBHID
+#define NODEID			POWERBANKID
 #define ALLNODES		0xfe
 #define SMARTSCREEN		0xf0
 #define RX_MODE			1
 #define RTC_SYNC		0x81
 #define MSG				0x82
 #define POWERBANK		0x83
+#define REPORTMSGTIME	3
+#define GPIO_CTRL		0x84		//reserved for lora relay module (Send with tis ID to module)
+#define GPIO_INFO		0x85		//reserved for lora relay module (Module will answer with this ID)
+#define GPIO_ALARM		0x86		//reserved for lora relay module (Alarm message)
+#define TELEGRAM_MSG	0x87
+#define GATEWAYCMD		0x88
 #define MAIN_UPS		0x12		//Home ups
 
 
@@ -245,7 +252,7 @@ int main(void)
 			
 			size_t msgHeaderSize = sizeof(rfHeader);			
 			memcpy(udpTxDatagram, rfRxDataMsg, msgHeaderSize);
-			memcpy(udpTxDatagram + sizeof(rfHeader), DATA, rfRxDataMsg->rxtxBuffLenght);
+			memcpy(udpTxDatagram + sizeof(rfHeader), RF_DATA, rfRxDataMsg->rxtxBuffLenght);
 			
 			result = socket(UdpTxSockNum, Sn_MR_UDP, UdpTxPort, SF_IO_NONBLOCK);
 			result = sendto(UdpTxSockNum, udpTxDatagram, msgHeaderSize+rfRxDataMsg->rxtxBuffLenght, UdpDestAddress, UdpTxPort);
@@ -253,11 +260,11 @@ int main(void)
 			
 			switch(rfRxDataMsg->opcode) {
 				case MSG:
-				memcpy(&testMsg, DATA, sizeof(testMsg));
+				memcpy(&testMsg, RF_DATA, sizeof(testMsg));
 				break;
 				case RTC_SYNC:
 				
-				memcpy(&sys_rtc, DATA, sizeof(sys_rtc));
+				memcpy(&sys_rtc, RF_DATA, sizeof(sys_rtc));
 				rtc_set(&sys_rtc);
 				//if(sys_rtc.second == 0){lcdInitReq=1;}
 				break;

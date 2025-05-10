@@ -74,6 +74,7 @@ typedef struct {
 
 // Function Declerations
 uint8_t rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID);
+void calculateRFRegisters(uint32_t frequencyMHz, uint8_t *msb, uint8_t *mid, uint8_t *lsb);
 void setAddress(uint8_t addr);
 void setNetwork(uint8_t networkID);
 

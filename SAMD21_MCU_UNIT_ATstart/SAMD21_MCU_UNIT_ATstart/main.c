@@ -21,10 +21,12 @@ ramIDS spiFlash;
 powerData mainBattery;
 
 
+
 #define POWERBANKID		0x21
 #define VFDSCREEN		0x03
 #define DEVMODULE		0x22
 #define DEVMODULE2		0xFE
+#define RFGATEWAY		0xFC
 #define RADIOMODE		TX_UNMUTE
 
 
@@ -40,6 +42,7 @@ powerData mainBattery;
 #define GPIO_CTRL		0x84		//reserved for lora relay module (Send with tis ID to module)
 #define GPIO_INFO		0x85		//reserved for lora relay module (Module will answer with this ID)
 #define GPIO_ALARM		0x86		//reserved for lora relay module (Alarm message)
+#define TELEGRAM_MSG	0x87
 #define MAIN_UPS		0x12		//Home ups
 
 
@@ -55,15 +58,19 @@ uint8_t upsData[64];
 
 //#define ETHERNET
 //#define  DISPLAY_VFD
-//#define  DISPLAY_OLED
-#define  DISPLAY_LCD
-#define I2C_USI
+#define  DISPLAY_OLED
+//#define  DISPLAY_LCD
+//#define I2C_USI
 
 
 uint8_t updateScreen = 1;
 uint32_t hidPacketCounter;
 uint32_t rfPacketCounter;
 uint8_t lcdMsg[64];
+
+uint8_t trottle[2];
+int8_t asics[4];
+uint16_t btns;
 
 #ifdef I2C_USI
 	#define BOARD_ADDR	 0x27
@@ -130,6 +137,7 @@ uint8_t packNum = 0;
 static bool usb_device_cb_generic_out(const uint8_t ep, const enum usb_xfer_code rc, const uint32_t count)
 {
 	hiddf_generic_read(hid_generic_out_report, sizeof(hid_generic_out_report));
+	//hiddf_generic_read(hid_generic_out_report, 8);
 	hidPacketCounter++;
 	if (hid_generic_out_report[0] == 0) {
 		// led be off
@@ -142,16 +150,23 @@ static bool usb_device_cb_generic_out(const uint8_t ep, const enum usb_xfer_code
 			break;
 		}
 	}
-	hid_generic_in_report[0] = packNum;
+	hid_generic_in_report[0] = 1;
 	hid_generic_in_report[5] = 0x55;
 	hid_generic_in_report[6] = GetBtnState() ? 0x00 : 0xff;
+	hid_generic_in_report[60] = 0x55;
 	hiddf_generic_write(hid_generic_in_report, sizeof(hid_generic_in_report));
+	//hiddf_generic_write(hid_generic_in_report, 2);
 	if(packNum == 255) packNum=0;
 	packNum++;
-	return false;
+	
+	return true;
 }
 
-
+static bool usb_device_cb_generic_in(const uint8_t ep, const enum usb_xfer_code rc, const uint32_t count)
+{
+	hidPacketCounter++;
+	return true;
+}
 
 
 
@@ -201,7 +216,7 @@ int main(void)
 		u8g2_SetPowerSave(&lcd, 0);
 		u8g2_ClearBuffer(&lcd);
 		u8g2_SetFont(&lcd, u8g2_font_lucasarts_scumm_subtitle_o_tf);
-		u8g2_DrawStr(&lcd, 1, 17, (void *)"RX MODULE");
+		u8g2_DrawStr(&lcd, 1, 17, (void *)"HELLO WORLD");
 		u8g2_SendBuffer(&lcd);
 	#endif
 	
@@ -217,6 +232,7 @@ int main(void)
 	
 	usb_HID_init();
 	hiddf_generic_register_callback(HIDDF_GENERIC_CB_READ, (FUNC_PTR)usb_device_cb_generic_out);
+	//hiddf_generic_register_callback(HIDDF_GENERIC_CB_WRITE, (FUNC_PTR)usb_device_cb_generic_in);
 	hiddf_generic_read(hid_generic_out_report, sizeof(hid_generic_out_report));
 	
 	rtc_int_enable(&sys_rtc);
@@ -233,7 +249,8 @@ int main(void)
 		}
 	}
 	
-	
+	//u8g2_SendBuffer(&lcd);
+	u8g2_ClearBuffer(&lcd);
 	
 	while (1) {
 		//if(hiddf_generic_is_enabled() == 0){
@@ -241,7 +258,7 @@ int main(void)
 		//	hiddf_generic_register_callback(HIDDF_GENERIC_CB_READ, (FUNC_PTR)usb_device_cb_generic_out);
 		//	hiddf_generic_read(hid_generic_out_report, sizeof(hid_generic_out_report));
 		//}
-		u8g2_DrawRFrame(&lcd, 0, 0, 159 ,99, 0);
+		u8g2_DrawRFrame(&lcd, 0, 0, 127 ,63, 0);
 		
 		
 		#ifdef I2C_USI
@@ -357,20 +374,25 @@ int main(void)
 		}
 		#endif
 		
+		
 		if(updateScreen){
+			//send_mouse_report(1, 0, 0x0, 0);
+			//send_mouse_report(0, 0, 0x0, 0);
+			
+			
 			updateScreen = 0;
-			sprintf((void *)lcdMsg, "%02d:%02d:%02d. %d; %d; %d    ", sys_rtc.hour, sys_rtc.minute, sys_rtc.second, hidPacketCounter, hiddf_generic_is_enabled(), rfPacketCounter);
+			sprintf((void *)lcdMsg, "%02d:%02d:%02d. %d   ", sys_rtc.hour, sys_rtc.minute, sys_rtc.second,rfPacketCounter);
 			
 			u8g2_SetFont(&lcd, u8g2_font_smart_patrol_nbp_tr);
 			u8g2_DrawStr(&lcd, 3, 12, (char *)lcdMsg);
 			
 			u8g2_SetFont(&lcd, u8g2_font_courR08_tr);
-			u8g2_DrawLine(&lcd, 3, 77, 155, 77);
+			u8g2_DrawLine(&lcd, 3, 13, 123, 13);
 			sprintf((void *)upsData, "%2.1fV,%2.1fA,%3.1fW      ", (float)mainBattery.voltage/1000, (float)mainBattery.current/1000, mainBattery.power);
-			u8g2_DrawStr(&lcd, 3, 87, (char *)upsData);
+			u8g2_DrawStr(&lcd, 3, 23, (char *)upsData);
 			
 			sprintf((void *)upsData, "%dWh,%d%%", (int)mainBattery.energy, mainBattery.capacity);
-			u8g2_DrawStr(&lcd, 3, 95, (char *)upsData);
+			u8g2_DrawStr(&lcd, 3, 23+10, (char *)upsData);
 			
 			
 			u8g2_SendBuffer(&lcd);

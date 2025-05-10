@@ -34,6 +34,7 @@
 #define GPIO_CTRL		0x84		//reserved for lora relay module (Send with tis ID to module)
 #define GPIO_INFO		0x85		//reserved for lora relay module (Module will answer with this ID)
 #define GPIO_ALARM		0x86		//reserved for lora relay module (Alarm message)
+#define TELEGRAM_MSG	0x87
 #define MAIN_UPS		0x12		//Home ups
 
 
@@ -253,25 +254,25 @@ int main(void)
 			
 			switch(rfRxDataMsg->opcode) {
 				case MSG:
-					if(simpleCRC(&DATA_BUFF, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
-						memcpy(&testMsg, (void *)DATA_BUFF, sizeof(testMsg));
+					if(simpleCRC(&DATA, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
+						memcpy(&testMsg, (void *)DATA, sizeof(testMsg));
 					}
 				break;
 				case POWERBANK:
-					if(simpleCRC(&DATA_BUFF, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
-						memcpy(&battery, (void *)DATA_BUFF, sizeof(battery));
+					if(simpleCRC(&DATA, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
+						memcpy(&battery, (void *)DATA, sizeof(battery));
 					}
 				break;
 				
 				case MAIN_UPS:
-					if(simpleCRC(&DATA_BUFF, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
-						memcpy(&mainBattery, (void *)DATA_BUFF, sizeof(mainBattery));
+					if(simpleCRC(&DATA, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
+						memcpy(&mainBattery, (void *)DATA, sizeof(mainBattery));
 					}
 				break;
 				
 				case RTC_SYNC:
-					if(simpleCRC(&DATA_BUFF, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
-						memcpy(&sys_rtc, (void *)DATA_BUFF, sizeof(sys_rtc));
+					if(simpleCRC(&DATA, rfRxDataMsg->rxtxBuffLenght) == rfRxDataMsg->dataCRC){
+						memcpy(&sys_rtc, (void *)DATA, sizeof(sys_rtc));
 						rtc_set(&sys_rtc);
 					}
 				if(sys_rtc.second == 0){lcdInitReq=1;}

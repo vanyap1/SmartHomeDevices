@@ -84,7 +84,7 @@ int main(void)
 	
 	HwInitIO();
 	rfm69_init(868, NODEID, NETWORKID);
-	//rcCalibration();
+	rcCalibration();
 	setHighPower(true);
 	
 	//myNodeId.netId = NETWORKID;
@@ -181,8 +181,8 @@ int main(void)
 			myNode.nodeBatVoltage = get_mVolt(ADCBAT);
 			
 			//printf("ID=%X; ntc=%d; vbat=%d; vcc=%d\n\r", 215,  myNode.nodeTemperature, myNode.nodeBatVoltage, myNode.nodeVccVoltage);
-			//printf("ID=0x%X, NetID=0x%X, Serial: %s; ntc=%d; vbat=%d; vcc=%d\r\n", myNodeId.nodId, myNodeId.netId, myNodeId.nodSerial, myNode.nodeTemperature, myNode.nodeBatVoltage, myNode.nodeVccVoltage);
-			printf("REG RTC %02X %02X %d\n\r", readReg(REG_IRQFLAGS1), readReg(REG_IRQFLAGS2), sysTick);
+			printf("ID=0x%X, NetID=0x%X, Serial: %s; ntc=%d; vbat=%d; vcc=%d\r\n", myNodeId.nodId, myNodeId.netId, myNodeId.nodSerial, myNode.nodeTemperature, myNode.nodeBatVoltage, myNode.nodeVccVoltage);
+			//printf("REG RTC %02X %02X %d\n\r", readReg(REG_IRQFLAGS1), readReg(REG_IRQFLAGS2), sysTick);
 			
 			//if(readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFONOTEMPTY)
 			if(readReg(REG_IRQFLAGS1) == RF_IRQFLAGS1_MODEREADY)
@@ -204,7 +204,7 @@ int main(void)
 		
 		if (rf_isReady()) {
 			rfHeader* rfRxDataMsg=rfMsgType();
-			//printf("raw;%02X%02X%02X%02X%02X;%03d;",  rfRxDataMsg->senderAddr, rfRxDataMsg->destinationAddr, rfRxDataMsg->opcode,  rfRxDataMsg->rxtxBuffLenght,  rfRxDataMsg->dataCRC, rfRxDataMsg->rssi);
+			printf("raw;%02X%02X%02X%02X%02X;%03d;\r\n",  rfRxDataMsg->senderAddr, rfRxDataMsg->destinationAddr, rfRxDataMsg->opcode,  rfRxDataMsg->rxtxBuffLenght,  rfRxDataMsg->dataCRC, rfRxDataMsg->rssi);
 			
 			//for (int i = 0; i < rfRxDataMsg->rxtxBuffLenght; ++i) {
 				//printf("%02X", DATA[i]);

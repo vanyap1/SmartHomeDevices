@@ -64,9 +64,15 @@ uint8_t rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID)
 	writeReg(REG_PREAMBLEMSB, 0x00);
 	writeReg(REG_PREAMBLELSB , 0x04);
 	
-	writeReg(REG_FRFMSB, RF_FRFMSB_868);
-	writeReg(REG_FRFMID, RF_FRFMID_868);
-	writeReg(REG_FRFLSB, RF_FRFLSB_868);
+	uint8_t msb, mid, lsb;
+	calculateRFRegisters(freqBand, &msb, &mid, &lsb);
+	writeReg(REG_FRFMSB, msb);
+	writeReg(REG_FRFMID, mid);
+	writeReg(REG_FRFLSB, lsb);
+	
+	//writeReg(REG_FRFMSB, RF_FRFMSB_868);
+	//writeReg(REG_FRFMID, RF_FRFMID_868);
+	//writeReg(REG_FRFLSB, RF_FRFLSB_868);
 	
 	tmp_data = readReg(REG_PACKETCONFIG2); //2
 	writeReg(REG_PACKETCONFIG2, RF_PACKET2_AUTORXRESTART_ON);
@@ -88,6 +94,21 @@ uint8_t rfm69_init(uint16_t freqBand, uint8_t nodeID, uint8_t networkID)
 	//setNetwork(networkID);
 	return tmp_data;
 }
+
+
+void calculateRFRegisters(uint32_t frequencyMHz, uint8_t *msb, uint8_t *mid, uint8_t *lsb) {
+	const uint32_t F_XOSC = 32000000; // 32 ???
+	const uint32_t TWO_POW_19 = 524288; // 2^19
+
+	uint32_t frequencyHz = frequencyMHz * 1000000; // ???????????? ? ??
+	uint32_t frf = (uint32_t)round((double)frequencyHz * TWO_POW_19 / F_XOSC);
+
+	
+	*msb = (frf >> 16) & 0xFF; // ??????? ????
+	*mid = (frf >> 8) & 0xFF;  // ???????? ????
+	*lsb = frf & 0xFF;         // ???????? ????
+}
+
 
 // set this node's address
 void setAddress(uint8_t addr)
@@ -276,19 +297,8 @@ int16_t readRSSI(uint8_t forceTrigger)
 		}
 	}
 	rssi = -readReg(REG_RSSIVALUE);
-	rssi >>= 1; 
+	rssi >>= 1;
 	return rssi;
-}
-void clearFIFO()
-{
-	
-	writeReg(REG_OPMODE, RF69_MODE_STANDBY);
-	_delay_ms(1);
-	while (readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFONOTEMPTY)
-	{
-		readReg(REG_FIFO);
-	}
-	setMode(RF69_MODE_RX);
 }
 
 // internal function
@@ -325,15 +335,15 @@ void sendFrame(rfHeader * txHeader, const void* buffer)
 		tx_timeout--;
 		if (tx_timeout == 0) {
 			#ifdef DEBUG
-			//DebugSerialWrite("Timeout waiting for PacketSent\r\n", 33);
+			DebugSerialWrite("Timeout waiting for PacketSent\r\n", 33);
 			#endif
 			return;
 		}
-		_delay_us(100);
+		delay_us(100);
 	}
 	#ifdef DEBUG
 	sprintf(rfDebugStr, "REG_IRQFLAGS=:%02X; %02X \r\n", readReg(REG_IRQFLAGS1), readReg(REG_IRQFLAGS2));
-	//DebugSerialWrite(rfDebugStr, strlen(rfDebugStr));
+	DebugSerialWrite(rfDebugStr, strlen(rfDebugStr));
 	#endif
 	setMode(RF69_MODE_RX);
 }
