@@ -56,7 +56,10 @@ extern "C" {
 	void RFM69_ReadBuff(uint8_t* buff, uint16_t len);
 	void RFM69_WriteBuff(uint8_t* buff, uint16_t len);
 	void RFM_69_sel(bool arg);
+	
+	
 	void SPI_RAM_sel(bool arg);
+	void SPI_ADC_sel(bool arg);							//Adc select - true; unselect - false
 	void SPI_RAM_ReadBuff(uint8_t* buff, uint16_t len);
 	void SPI_RAM_WriteBuff(uint8_t* buff, uint16_t len);
 	void SPI_write(uint8_t);
