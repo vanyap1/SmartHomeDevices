@@ -38,12 +38,12 @@ gpio ext_led = {(uint8_t *)&PORTD , PORTD4};
 
 
 rtc_date sys_rtc = {
-	.date = 18,
-	.month = 1,
+	.date = 30,
+	.month = 7,
 	.year = 25,
 	.dayofweek = 5,
-	.hour = 10,
-	.minute = 35,
+	.hour = 15,
+	.minute = 39,
 	.second = 00
 };
 
