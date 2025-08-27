@@ -339,7 +339,7 @@ void sendFrame(rfHeader * txHeader, const void* buffer)
 			#endif
 			return;
 		}
-		delay_us(100);
+		_delay_us(100);
 	}
 	#ifdef DEBUG
 	sprintf(rfDebugStr, "REG_IRQFLAGS=:%02X; %02X \r\n", readReg(REG_IRQFLAGS1), readReg(REG_IRQFLAGS2));

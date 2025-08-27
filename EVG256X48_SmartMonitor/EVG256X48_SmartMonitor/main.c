@@ -93,6 +93,49 @@ rtc_date sys_rtc = {
 
 rgb_led led1 = {255, 128, 1};
 
+void drawProgressBar(u8g2_t *lcd, int x, int y, int xLen, int val)
+{
+	if (val < 0) val = 0;
+	if (val > 99) val = 99;
+	int totalHeight = 8;
+	u8g2_DrawFrame(lcd, x, y, xLen, totalHeight);
+	int innerWidth = xLen - 4;
+	int fillWidth = (innerWidth * val) / 99;
+	if (fillWidth > 0) {
+		u8g2_DrawBox(lcd, x+2, y+2, fillWidth, 4);
+	}
+	char buf[6];
+	sprintf(buf, "%d%%", val);
+	u8g2_SetFont(lcd, u8g2_font_courR08_tr);
+	u8g2_DrawStr(lcd, x + xLen + 2, y + totalHeight, buf);
+}
+
+void drawProgressBarDither(u8g2_t *lcd, int x, int y, int xLen, int val)
+{
+	if (val < 0) val = 0;
+	if (val > 99) val = 99;
+
+	int totalHeight = 8;
+	u8g2_DrawFrame(lcd, x, y, xLen, totalHeight);
+
+	int innerWidth = xLen - 4;
+	int fillWidth = (innerWidth * val) / 99;
+
+	if (fillWidth > 0) {
+		for (int dy = 0; dy < 4; dy++) {
+			for (int dx = 0; dx < fillWidth; dx++) {
+				if ( ((dx + dy) % 2) == 0 ) {
+					u8g2_DrawPixel(lcd, x+2+dx, y+2+dy);
+				}
+			}
+		}
+	}
+	char buf[6];
+	sprintf(buf, "%d%%", val);
+	u8g2_SetFont(lcd, u8g2_font_courR08_tr);
+	u8g2_DrawStr(lcd, x + xLen + 2, y + totalHeight, buf);
+}
+
 int main(void)
 {
 	/* Initializes MCU, drivers and middleware */
@@ -350,6 +393,10 @@ int main(void)
 			
 			sprintf((void *)upsData, "%2.1f,%2.1f,%3.1fW,%dWh,%d%%", (float)mainBattery.voltage/1000, (float)mainBattery.current/1000, mainBattery.power, (int)mainBattery.energy, mainBattery.capacity);
 			u8g2_DrawStr(&lcd, 84, 17, (char *)upsData);
+			
+			drawProgressBarDither(&lcd, 1, 20, 82, battery.capacity);
+			drawProgressBarDither(&lcd, 1, 29, 82, mainBattery.capacity);
+			
 			
 			u8g2_DrawStr(&lcd, 1, 48, (char *)testMsg);
 			

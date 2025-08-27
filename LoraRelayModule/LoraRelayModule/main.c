@@ -31,11 +31,16 @@
 static FILE mystdout = FDEV_SETUP_STREAM((void *)uart_send_byte, NULL, _FDEV_SETUP_WRITE);
 
 
-#define LEDBLUE		OCR2B
-#define LEDRED		OCR0B
-#define LEDGRN		OCR0A
-
-#define RADIO_MODE	TX_UNMUTE
+#define LEDBLUE						OCR2B
+#define LEDRED						OCR0B
+#define LEDGRN						OCR0A
+#define ON_DELAY_TIME				60
+#define MAX_MSG_PROTECTION_TIME		60
+#define PROTECTION_CURRENT			-50000
+#define PROTECTION_TEMP				450
+#define TX_MSG_TIME					59
+#define MIN_VCC_PROTECTION			4000
+#define RADIO_MODE					TX_UNMUTE
 
 powerData mainBattery;
 
@@ -50,7 +55,7 @@ gpio ledRedPin = {(uint8_t *)&PORTD , PORTD5};
 gpio ledGrnPin = {(uint8_t *)&PORTD , PORTD6};
 
 gpio relay = {(uint8_t *)&PORTE , PORTE1};
-	
+
 nodeInfo myNode;	
 nodeNetId myNodeId;
 
@@ -59,8 +64,11 @@ nodeNetId myNodeId;
 
 
 uint32_t sysTick = 0;
+uint32_t lastMsgTime = 0;
+uint32_t TxMsgTime = TX_MSG_TIME;
 uint8_t rtc_int_request = 0;
 uint16_t BAT_VOLT = 0;
+uint8_t onDelayTimer = ON_DELAY_TIME;
 
 uint8_t txLen;
 uint8_t txCRC;
@@ -69,7 +77,7 @@ rfHeader rfTxDataPack;
 uint8_t ldPWMB, ldPWMG, ldPWMR = 0;
 uint8_t measureRequest = 0;
 
-ISR(TIMER1_COMPA_vect, ISR_BLOCK)
+ISR(TIMER1_COMPA_vect)
 {
 	//gpio_toggle_pin_level(&debugOut);
 	measureRequest = 1;
@@ -80,7 +88,7 @@ ISR(TIMER1_COMPA_vect, ISR_BLOCK)
 int main(void)
 {
 	sei();
-	wdt_enable(WDTO_2S);
+	wdt_enable(WDTO_4S);
 	
 	HwInitIO();
 	rfm69_init(868, NODEID, NETWORKID);
@@ -88,7 +96,7 @@ int main(void)
 	setHighPower(true);
 	
 	//myNodeId.netId = NETWORKID;
-	//myNodeId.nodId = 0x21;
+	//myNodeId.nodId = 0x78;
 	//strcpy(myNodeId.nodSerial, "ao1340cm01");
 	//EEPROM_update_batch(1, &myNodeId, sizeof(myNodeId));
 	
@@ -98,7 +106,7 @@ int main(void)
 	
 	
 	
-    char char_array[128]="test_data\0";
+    char char_array[128]="test_data\n\r";
     char txData[128];
     uart_init(250000,1);
     //twi0_init(400000);
@@ -137,6 +145,7 @@ int main(void)
 	 TIMSK1 |= (1 << OCIE1A );  // Enable CTC interrupt
 	 TCCR1B |= (1 << CS12 );// | (1 << CS11 ));
 	
+	 
 	
     //sleep_enable();
     //set_sleep_mode(SLEEP_MODE_PWR_DOWN);
@@ -144,7 +153,6 @@ int main(void)
     
     
     printf("RUN\n\r");
-	
 	
 	
 	
@@ -181,17 +189,55 @@ int main(void)
 			myNode.nodeBatVoltage = get_mVolt(ADCBAT);
 			
 			//printf("ID=%X; ntc=%d; vbat=%d; vcc=%d\n\r", 215,  myNode.nodeTemperature, myNode.nodeBatVoltage, myNode.nodeVccVoltage);
-			printf("ID=0x%X, NetID=0x%X, Serial: %s; ntc=%d; vbat=%d; vcc=%d\r\n", myNodeId.nodId, myNodeId.netId, myNodeId.nodSerial, myNode.nodeTemperature, myNode.nodeBatVoltage, myNode.nodeVccVoltage);
+			//printf("ID=0x%X, NetID=0x%X, Serial: %s; ntc=%d; vbat=%d; vcc=%d\r\n", myNodeId.nodId, myNodeId.netId, myNodeId.nodSerial, myNode.nodeTemperature, myNode.nodeBatVoltage, myNode.nodeVccVoltage);
 			//printf("REG RTC %02X %02X %d\n\r", readReg(REG_IRQFLAGS1), readReg(REG_IRQFLAGS2), sysTick);
-			
+			printf("%ld, %ld, ntc=%d\n\r", sysTick- lastMsgTime, mainBattery.current, myNode.nodeTemperature);
 			//if(readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFONOTEMPTY)
-			if(readReg(REG_IRQFLAGS1) == RF_IRQFLAGS1_MODEREADY)
-			{
+			if(readReg(REG_IRQFLAGS1) == RF_IRQFLAGS1_MODEREADY 
+			|| (sysTick - lastMsgTime) >= MAX_MSG_PROTECTION_TIME){
 				//clearFIFO();
 				rfm69_init(868, NODEID, NETWORKID);
 				rcCalibration();
 				setHighPower(true);
 			}
+			
+			
+			
+			if((sysTick - lastMsgTime) >= MAX_MSG_PROTECTION_TIME 
+				|| mainBattery.current <= PROTECTION_CURRENT
+				|| myNode.nodeTemperature >= PROTECTION_TEMP
+				|| myNode.nodeVccVoltage <= MIN_VCC_PROTECTION
+				) onDelayTimer = ON_DELAY_TIME;
+			
+			if(onDelayTimer != 0) onDelayTimer--;
+			myNode.relayStatus = onDelayTimer == 0 ? 1 : 0;
+			gpio_set_pin_level(&relay, myNode.relayStatus);
+			
+			if(TxMsgTime != 0) TxMsgTime--;
+			if(TxMsgTime == 0){
+				TxMsgTime = TX_MSG_TIME;
+				if (RADIO_MODE) //Check if radio is unmute
+				{
+					ldPWMR = 64;
+					sprintf(char_array, "id:0x%X%X;s:%d;t:%2.1f;v:%2.1f;n:%2.1f",
+						myNodeId.nodId, 
+						myNodeId.netId,
+						myNode.relayStatus, 
+						(float)myNode.nodeTemperature/10, 
+						(float)myNode.nodeBatVoltage/1000,
+						(float)myNode.nodeVccVoltage/1000
+					);
+					
+					rfHeader rfTxDataHeader;
+					rfTxDataHeader.destinationAddr = ALLNODES;
+					rfTxDataHeader.senderAddr = NODEID;
+					rfTxDataHeader.opcode = MSG;
+					rfTxDataHeader.rxtxBuffLenght = strlen(char_array);
+					rfTxDataHeader.dataCRC = simpleCRC(&char_array, strlen(char_array));
+					sendFrame(&rfTxDataHeader, &char_array);
+				}
+			}
+			
 			
 			measureRequest = 0;
 		}
@@ -204,7 +250,7 @@ int main(void)
 		
 		if (rf_isReady()) {
 			rfHeader* rfRxDataMsg=rfMsgType();
-			printf("raw;%02X%02X%02X%02X%02X;%03d;\r\n",  rfRxDataMsg->senderAddr, rfRxDataMsg->destinationAddr, rfRxDataMsg->opcode,  rfRxDataMsg->rxtxBuffLenght,  rfRxDataMsg->dataCRC, rfRxDataMsg->rssi);
+			//printf("raw;%02X%02X%02X%02X%02X;%03d;\r\n",  rfRxDataMsg->senderAddr, rfRxDataMsg->destinationAddr, rfRxDataMsg->opcode,  rfRxDataMsg->rxtxBuffLenght,  rfRxDataMsg->dataCRC, rfRxDataMsg->rssi);
 			
 			//for (int i = 0; i < rfRxDataMsg->rxtxBuffLenght; ++i) {
 				//printf("%02X", DATA[i]);
@@ -226,8 +272,9 @@ int main(void)
 				break;
 				case MAIN_UPS:
 					memcpy(&mainBattery, (void *)DATA, sizeof(mainBattery));
-					//printf("MAIN UPS: %2.1fV,%2.1fA,%3.1fW\n\r", (float)mainBattery.voltage/1000, (float)mainBattery.current/1000, mainBattery.power);
+					//printf("MAIN UPS: %2.1fV,%2.1fA\n\r", (float)mainBattery.voltage/1000, (float)mainBattery.current/1000);
 					ldPWMB = 128;
+					lastMsgTime = sysTick;
 				break;
 				
 				case GPIO_CTRL:

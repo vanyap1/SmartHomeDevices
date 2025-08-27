@@ -70,7 +70,7 @@ int main(void)
 	stdout = &mystdout;
 	
 	gpio_set_pin_direction(&ledG , PORT_DIR_OUT); gpio_set_pin_level(&ledG, false);
-	gpio_set_pin_direction(&ledR , PORT_DIR_OUT); gpio_set_pin_level(&ledR, false);
+	gpio_set_pin_direction(&ledR , PORT_DIR_OUT); gpio_set_pin_level(&ledR, true);
 	
 	TCCR1B |= (1 << WGM12 );   // Configure timer 1 for CTC mode
 	OCR1A = 6249;             // Set CTC compare value to 10Hz (100mS)
@@ -82,7 +82,8 @@ int main(void)
 	TCCR1B |= (1 << CS12 );// | (1 << CS11 ));
 	
 	printf("RUN\n\r");
-	
+	_delay_ms(500);
+	gpio_set_pin_direction(&ledR , PORT_DIR_OUT); gpio_set_pin_level(&ledR, false);
     while (1) 
     {
 		wdt_reset();
