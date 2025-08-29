@@ -37,10 +37,12 @@ static FILE mystdout = FDEV_SETUP_STREAM((void *)uart_send_byte, NULL, _FDEV_SET
 #define ON_DELAY_TIME				60
 #define MAX_MSG_PROTECTION_TIME		60
 #define PROTECTION_CURRENT			-50000
-#define PROTECTION_TEMP				450
+#define PROTECTION_TEMP				550
 #define TX_MSG_TIME					59
 #define MIN_VCC_PROTECTION			4000
 #define RADIO_MODE					TX_UNMUTE
+#define ALARM_SERIES_MAX_ITERATION  2
+
 
 powerData mainBattery;
 
@@ -56,6 +58,7 @@ gpio ledGrnPin = {(uint8_t *)&PORTD , PORTD6};
 
 gpio relay = {(uint8_t *)&PORTE , PORTE1};
 
+
 nodeInfo myNode;	
 nodeNetId myNodeId;
 
@@ -69,6 +72,8 @@ uint32_t TxMsgTime = TX_MSG_TIME;
 uint8_t rtc_int_request = 0;
 uint16_t BAT_VOLT = 0;
 uint8_t onDelayTimer = ON_DELAY_TIME;
+int32_t previousCurrentVal, averageCurrentVal;
+uint8_t alarmCounter = 0;
 
 uint8_t txLen;
 uint8_t txCRC;
@@ -174,10 +179,7 @@ int main(void)
 			LEDRED = ldPWMR;
 		}
 		
-		if(!gpio_get_pin_level(&chrgerChrg)){
-			//Charge in process
-			ldPWMR = 4;
-		}
+		
 		if(!gpio_get_pin_level(&chrgerStdby)){
 			//Battery is full and AC present
 			ldPWMG = 4;
@@ -191,7 +193,7 @@ int main(void)
 			//printf("ID=%X; ntc=%d; vbat=%d; vcc=%d\n\r", 215,  myNode.nodeTemperature, myNode.nodeBatVoltage, myNode.nodeVccVoltage);
 			//printf("ID=0x%X, NetID=0x%X, Serial: %s; ntc=%d; vbat=%d; vcc=%d\r\n", myNodeId.nodId, myNodeId.netId, myNodeId.nodSerial, myNode.nodeTemperature, myNode.nodeBatVoltage, myNode.nodeVccVoltage);
 			//printf("REG RTC %02X %02X %d\n\r", readReg(REG_IRQFLAGS1), readReg(REG_IRQFLAGS2), sysTick);
-			printf("%ld, %ld, ntc=%d\n\r", sysTick- lastMsgTime, mainBattery.current, myNode.nodeTemperature);
+			printf("%ld, %ld, %d, ntc=%d, %d\n\r", sysTick- lastMsgTime, mainBattery.current, alarmCounter, myNode.nodeTemperature, onDelayTimer);
 			//if(readReg(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFONOTEMPTY)
 			if(readReg(REG_IRQFLAGS1) == RF_IRQFLAGS1_MODEREADY 
 			|| (sysTick - lastMsgTime) >= MAX_MSG_PROTECTION_TIME){
@@ -201,16 +203,24 @@ int main(void)
 				setHighPower(true);
 			}
 			
-			
+			if(mainBattery.current <= PROTECTION_CURRENT){
+				if(alarmCounter <= 100) alarmCounter++;
+			}else{
+				alarmCounter = 0;
+			}
 			
 			if((sysTick - lastMsgTime) >= MAX_MSG_PROTECTION_TIME 
-				|| mainBattery.current <= PROTECTION_CURRENT
+				|| alarmCounter > ALARM_SERIES_MAX_ITERATION
 				|| myNode.nodeTemperature >= PROTECTION_TEMP
 				|| myNode.nodeVccVoltage <= MIN_VCC_PROTECTION
 				) onDelayTimer = ON_DELAY_TIME;
 			
 			if(onDelayTimer != 0) onDelayTimer--;
+			if(onDelayTimer != 0) ldPWMR = 255;
+			
 			myNode.relayStatus = onDelayTimer == 0 ? 1 : 0;
+			
+			
 			gpio_set_pin_level(&relay, myNode.relayStatus);
 			
 			if(TxMsgTime != 0) TxMsgTime--;
@@ -238,7 +248,10 @@ int main(void)
 				}
 			}
 			
-			
+			if(!gpio_get_pin_level(&chrgerChrg)){
+				//Charge in process
+				ldPWMG = 64;
+			}
 			measureRequest = 0;
 		}
 		
@@ -273,7 +286,7 @@ int main(void)
 				case MAIN_UPS:
 					memcpy(&mainBattery, (void *)DATA, sizeof(mainBattery));
 					//printf("MAIN UPS: %2.1fV,%2.1fA\n\r", (float)mainBattery.voltage/1000, (float)mainBattery.current/1000);
-					ldPWMB = 128;
+					//ldPWMB = 32;
 					lastMsgTime = sysTick;
 				break;
 				
