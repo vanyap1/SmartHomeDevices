@@ -112,6 +112,7 @@ int main(void)
 	
 	
     char char_array[128]="test_data\n\r";
+	char testMsg[65];
     char txData[128];
     uart_init(250000,1);
     //twi0_init(400000);
@@ -203,11 +204,7 @@ int main(void)
 				setHighPower(true);
 			}
 			
-			if(mainBattery.current <= PROTECTION_CURRENT){
-				if(alarmCounter <= 100) alarmCounter++;
-			}else{
-				alarmCounter = 0;
-			}
+			
 			
 			if((sysTick - lastMsgTime) >= MAX_MSG_PROTECTION_TIME 
 				|| alarmCounter > ALARM_SERIES_MAX_ITERATION
@@ -273,7 +270,36 @@ int main(void)
 			switch(rfRxDataMsg->opcode) {
 				case MSG:
 					//ldPWMG = 64;
-				//memcpy(&testMsg, DATA, sizeof(testMsg));
+				memcpy(&testMsg, DATA, rfRxDataMsg->rxtxBuffLenght);
+				printf("%s\n\r", testMsg);
+				uint16_t nodeId16 = (myNodeId.nodId << 8) | myNodeId.netId;
+				char expectedPrefix[16];
+				sprintf(expectedPrefix, "get:0x%04X", nodeId16);
+				if (strncmp(testMsg, expectedPrefix, strlen(expectedPrefix)) == 0) {
+					if (RADIO_MODE) //Check if radio is unmute
+					{
+						ldPWMR = 64;
+						sprintf(char_array, "id:0x%X%X;s:%d;t:%2.1f;v:%2.1f;n:%2.1f",
+						myNodeId.nodId,
+						myNodeId.netId,
+						myNode.relayStatus,
+						(float)myNode.nodeTemperature/10,
+						(float)myNode.nodeBatVoltage/1000,
+						(float)myNode.nodeVccVoltage/1000
+						);
+						
+						rfHeader rfTxDataHeader;
+						rfTxDataHeader.destinationAddr = ALLNODES;
+						rfTxDataHeader.senderAddr = NODEID;
+						rfTxDataHeader.opcode = MSG;
+						rfTxDataHeader.rxtxBuffLenght = strlen(char_array);
+						rfTxDataHeader.dataCRC = simpleCRC(&char_array, strlen(char_array));
+						sendFrame(&rfTxDataHeader, &char_array);
+					}
+				}
+				
+				
+				
 				break;
 				case POWERBANK:
 					//ldPWMR = 64;
@@ -285,6 +311,11 @@ int main(void)
 				break;
 				case MAIN_UPS:
 					memcpy(&mainBattery, (void *)DATA, sizeof(mainBattery));
+					if(mainBattery.current <= PROTECTION_CURRENT){
+						if(alarmCounter <= 100) alarmCounter++;
+						}else{
+						alarmCounter = 0;
+					}
 					//printf("MAIN UPS: %2.1fV,%2.1fA\n\r", (float)mainBattery.voltage/1000, (float)mainBattery.current/1000);
 					//ldPWMB = 32;
 					lastMsgTime = sysTick;
