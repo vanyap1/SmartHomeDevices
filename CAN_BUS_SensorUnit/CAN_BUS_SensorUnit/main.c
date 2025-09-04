@@ -29,6 +29,9 @@
 static FILE mystdout = FDEV_SETUP_STREAM((void *)uart_send_byte, NULL, _FDEV_SETUP_WRITE);
 
 #define TX_INTERVAL 10
+#define GPIO_MODULE		0x27
+uint8_t expanderOut, expanderIn;
+
 
 gpio ledR = {(uint8_t *)&PORTD , PORTD5};
 gpio ledG = {(uint8_t *)&PORTD , PORTD6};
@@ -43,6 +46,10 @@ uCAN_MSG txMessage;
 uCAN_MSG rxMessage;
 sensorUnitDto sensorUnit;
 
+uint8_t outputs_regs[] =  {0xff, 0x00};
+
+	
+	
 
 ISR(TIMER1_COMPA_vect, ISR_BLOCK)
 {
@@ -66,6 +73,7 @@ int main(void)
 	uart_init(9600,1);
 	adc_init();
 	spi1_init();
+	twi1_init(400000);
 	CANSPI_Initialize();
 	stdout = &mystdout;
 	
@@ -84,7 +92,10 @@ int main(void)
 	printf("RUN\n\r");
 	_delay_ms(500);
 	gpio_set_pin_direction(&ledR , PORT_DIR_OUT); gpio_set_pin_level(&ledR, false);
-    while (1) 
+    
+	twi1_write(GPIO_MODULE, 0x06, &outputs_regs, sizeof(outputs_regs));
+	
+	while (1) 
     {
 		wdt_reset();
 		_delay_ms(1);
@@ -110,11 +121,18 @@ int main(void)
 		
 		if((sysTick - oneSecondBlink) >= 3){
 			gpio_set_pin_level(&ledG, true);
+			
+						
+			twi1_read(GPIO_MODULE, 0x00, &expanderIn, sizeof(expanderIn));
+			expanderOut = ~counter;
+			twi1_write(GPIO_MODULE, 0x03, &expanderOut, sizeof(expanderOut));
+			
+			
 			oneSecondBlink = sysTick;
 			txMessage.frame.idType = dSTANDARD_CAN_MSG_ID_2_0B;
 			txMessage.frame.id = sensorUnit.uid;
 			txMessage.frame.dlc = 8;
-			txMessage.frame.data0 = counter;
+			txMessage.frame.data0 = ~expanderIn;
 			txMessage.frame.data1 = counter;
 			txMessage.frame.data2 = counter;
 			txMessage.frame.data3 = counter;

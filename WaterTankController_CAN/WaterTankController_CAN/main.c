@@ -219,7 +219,7 @@ int main(void)
 			if(ISSET(MID_LEVEL)){
 				lockPump = UNLOCK;
 			}
-			if(!ISSET(LO_LEVEL)){
+			if(!ISSET(LO_LEVEL) && sonarDist < 124){
 				lockPump = LOCK;
 			}
 			
