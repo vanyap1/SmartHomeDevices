@@ -22,6 +22,8 @@
 #include "adc_hal.h"
 #include "eeprom.h"
 #include "canspi.h"
+#include "cig14.h"
+
 
 #include <stdio.h>
 static FILE mystdout = FDEV_SETUP_STREAM((void *)uart_send_byte, NULL, _FDEV_SETUP_WRITE);
@@ -30,6 +32,7 @@ static FILE mystdout = FDEV_SETUP_STREAM((void *)uart_send_byte, NULL, _FDEV_SET
 #define CANID_PRESSURE_REPORT	0x301
 #define CANID_CONFIG_UPDATE		0x303
 #define CANID_MANUAL_RUN		0x304
+#define LEVEL_CORRECTION		128
 
 #define TX_INTERVAL 10
 
@@ -62,6 +65,7 @@ uint8_t manualRun = 0;
 uint8_t pumpEn = 0;
 const uint8_t* sonarData;
 uint16_t sonarDist;
+char screenData[24] = "\n";
 
 //#define  DEBUG
 #define  PUMP		5
@@ -100,7 +104,8 @@ int main(void)
 	MCUSR = 0;
 	sei();
 	wdt_enable(WDTO_4S);
-	
+	vfd16_init(48);
+	vfd16b_string(0, (uint8_t *)"Water tank");
 	//EEPROM_update_batch(1, &myNodeId, sizeof(myNodeId));
 	EEPROM_read_batch(1, &pumpLims, sizeof(pumpLims));
 	if(pumpLims.eepromOk != 0xaa){
@@ -178,6 +183,8 @@ int main(void)
 			CANSPI_Transmit(&txMessage);
 			txRequest=0;
 			
+			sprintf(&screenData , "P:%2.1f L:%d ", (float)waterPressure/100, sonarDist-LEVEL_CORRECTION);
+			vfd16b_string(0, (uint8_t *)screenData);
 			#ifdef DEBUG
 				printf("Sonar: %d; Press: %d; Hlim: %d; LLim: %d; Delta: %d; Manual: %d \n\r", sonarDist, waterPressure, pumpLims.pressureHiLim, pumpLims.pressureLoLim, pumpLims.pressureDelta, manualRun);
 			#endif
@@ -257,6 +264,8 @@ int main(void)
 			
 			i2cData[0] = ~ outputsState;
 			twi0_transfer(I2CEXPANDERADDR, &i2cData, sizeof(i2cData));
+			
+			
 		}
     }
 }

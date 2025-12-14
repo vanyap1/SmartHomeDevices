@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controller Dashboard</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 2em;
+      font-family: sans-serif;
+      background-color: #1e1e2f;
+      color: #e0f7fa;
+      display: flex;
+      justify-content: center;
+    }
+    .frame {
+      max-width: 1200px;
+      width: 100%;
+      background-color: #263238;
+      padding: 1em;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.1);
+    }
+    header {
+      padding: 1em;
+      text-align: center;
+      font-size: 1.5em;
+      color: #4dd0e1;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1em;
+      padding: 1em;
+    }
+    .card {
+      background-color: #2c3e50;
+      border-radius: 8px;
+      padding: 1em;
+      box-shadow: 0 0 10px rgba(0,255,255,0.1);
+    }
+    .card h2 {
+      color: #00bcd4;
+      margin-top: 0;
+    }
+    .data-field {
+      margin: 0.5em 0;
+    }
+    .label {
+      font-weight: bold;
+      color: #80deea;
+    }
+    .status-indicator {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #ccc; /* Default to gray */
+      display: inline-block;
+      margin-left: 10px;
+    }
+    .status-indicator.on {
+      background-color: #4caf50; /* Green for ON */
+      box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+    }
+    .status-indicator.off {
+      background-color: #f44336; /* Red for OFF */
+      box-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+    }
+    .indicator-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .indicator-label {
+      margin-top: 5px;
+      text-align: center;
+    }
+    .btn {
+      margin: 0.3em;
+      padding: 0.5em 1em;
+      background-color: #00838f;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background-color: #00acc1;
+    }
+    .kotel-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1em;
+    }
+    .ups-content {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1em;
+    }
+    .status-list {
+      border: 1px solid #4dd0e1;
+      border-radius: 6px;
+      padding: 0.8em;
+      background-color: rgba(77, 208, 225, 0.05);
+    }
+    .status-item {
+      display: flex;
+      align-items: center;
+      margin: 0.3em 0;
+    }
+    .status-item .status-indicator {
+      margin-right: 8px;
+      margin-left: 0;
+      width: 12px;
+      height: 12px;
+    }
+    .status-label {
+      font-size: 0.9em;
+      color: #b0bec5;
+    }
+    .timestamp-container {
+      position: relative;
+      text-align: right;
+      margin-top: 1em;
+      padding: 0.8em;
+    }
+    .timestamp {
+      background-color: rgba(77, 208, 225, 0.1);
+      border: 1px solid rgba(77, 208, 225, 0.3);
+      border-radius: 6px;
+      padding: 0.6em 1em;
+      font-family: monospace;
+      font-size: 0.85em;
+      color: #80deea;
+      display: inline-block;
+      box-shadow: 0 2px 8px rgba(0, 255, 255, 0.1);
+    }
+    .timestamp-label {
+      font-size: 0.75em;
+      color: #4dd0e1;
+      margin-bottom: 0.3em;
+      display: block;
+    }
+    .can-status-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 1em;
+      padding: 0.8em;
+      background-color: rgba(77, 208, 225, 0.05);
+      border-radius: 6px;
+      border: 1px solid rgba(77, 208, 225, 0.2);
+    }
+    .can-status-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+    .can-status-label {
+      font-size: 0.85em;
+      color: #b0bec5;
+    }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <header>Controller Dashboard</header>
+    <div class="container">
+      <div class="card">
+        <h2>UPS Status</h2>
+        <div class="ups-content">
+          <div>
+            <div class="data-field"><span class="label">Voltage:</span> <span id="batVoltage"></span> V</div>
+            <div class="data-field"><span class="label">Current:</span> <span id="batCurrent"></span> A</div>
+            <div class="data-field"><span class="label">SOC:</span> <span id="batEnergy"></span> Ah</div>
+            <div class="data-field"><span class="label">Source:</span> <span id="currentSource"></span></div>
+            <div class="data-field"><span class="label">Msg Interval:</span> <span id="upsMsgInteval"></span> ms</div>
+          </div>
+          <div class="status-list">
+            <div class="status-item">
+              <div class="status-indicator" id="ups-bit0"></div>
+              <span class="status-label">Manual RUN</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="ups-bit1"></div>
+              <span class="status-label">KOTEL</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="ups-bit2"></div>
+              <span class="status-label">Solar module</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="ups-bit3"></div>
+              <span class="status-label">BAT ERROR</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="ups-bit4"></div>
+              <span class="status-label">Invertor ERR</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="ups-bit5"></div>
+              <span class="status-label">Invertor overheat</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="ups-bit6"></div>
+              <span class="status-label">Charger ERR</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="ups-bit7"></div>
+              <span class="status-label">Charger Overheat</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Circulation Pump</h2>
+        <div class="data-field"><span class="label">Current:</span> <span id="pumpAmp"></span> mA</div>
+        <div class="data-field"><span class="label">State:</span> <span id="pumpState"></span></div>
+        <div class="data-field"><span class="label">Mode:</span> <span id="pumpMode"></span></div>
+        <button class="btn" onclick="setRelay(1)">Turn On Pump</button>
+        <button class="btn" onclick="resetRelay(1)">Turn Off Pump</button>
+      </div>
+
+      <div class="card">
+        <h2>Sensor Module</h2>
+        <div class="data-field"><span class="label">boilerTemperature:</span> <span id="boilerTemperature"></span> &#176;C</div>
+        <div class="data-field"><span class="label">coolantTemperature:</span> <span id="coolantTemperature"></span> &#176;C</div>
+        <div class="data-field"><span class="label">solarCollectorTemp:</span> <span id="solarCollectorTemp"></span> &#176;C</div>
+        <div class="data-field"><span class="label">lightLevel:</span> <span id="lightLevel"></span> lx</div>
+        <div class="data-field"><span class="label">Msg Interval:</span> <span id="sensorUnitMsgInteval"></span> ms</div>
+      </div>
+
+      <div class="card">
+        <h2>Water Reservoir</h2>
+        <div class="data-field"><span class="label">DIN:</span> <span id="waterTankDIN"></span></div>
+        <div class="data-field"><span class="label">DOUT:</span> <span id="waterTankDOUT"></span></div>
+        <div class="data-field"><span class="label">Pressure:</span> <span id="waterPress"></span> Bar</div>
+        <div class="data-field"><span class="label">Pressure Lo Limit:</span> <span id="waterPressLoLim"></span> Bar</div>
+        <div class="data-field"><span class="label">Pressure Delta:</span> <span id="waterPressDelta"></span> Bar</div>
+        <div class="data-field"><span class="label">Water Level:</span> <span id="waterLevel"></span></div>
+        <div class="data-field"><span class="label">Msg Interval:</span> <span id="waterTankMsgInteval"></span> ms</div>
+      </div>
+
+      <div class="card">
+        <h2>Kotel</h2>
+        <div class="kotel-content">
+          <div>
+            <div class="data-field"><span class="label">Temperature:</span> <span id="kotelActTemp"></span> &#176;C</div>
+            <div class="data-field"><span class="label">Set High:</span> <span id="kotelTemHi"></span> &#176;C</div>
+            <div class="data-field"><span class="label">Set Low:</span> <span id="kotelTemLo"></span> &#176;C</div>
+            <div class="data-field"><span class="label">Delta:</span> <span id="kotelTemDelta"></span> &#176;C</div>
+            <div class="data-field"><span class="label">RUN temp:</span> <span id="kotelTemRun"></span> &#176;C</div>
+            <div class="data-field"><span class="label">Mode stop:</span> <span id="kotelTemStop"></span> &#176;C</div>
+            <div class="data-field"><span class="label">Msg Interval:</span> <span id="kotelMsgInteval"></span> ms</div>
+
+          </div>
+          <div class="status-list">
+            <div class="status-item">
+              <div class="status-indicator" id="kotel-bit0"></div>
+              <span class="status-label">RUN</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="kotel-bit1"></div>
+              <span class="status-label">Prerun</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="kotel-bit2"></div>
+              <span class="status-label">T1 ERROR</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="kotel-bit3"></div>
+              <span class="status-label">T2 ERROR</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="kotel-bit4"></div>
+              <span class="status-label">Flue Overheat</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="kotel-bit5"></div>
+              <span class="status-label">REL1</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="kotel-bit6"></div>
+              <span class="status-label">DOOR</span>
+            </div>
+            <div class="status-item">
+              <div class="status-indicator" id="kotel-bit7"></div>
+              <span class="status-label">REL stat</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>I/O Control</h2>
+        <div class="data-field"><span class="label">Input 1:</span> <span id="in1"></span>
+          <div class="status-indicator" id="in0-indicator"></div>
+        </div>
+        <div class="data-field"><span class="label">Input 2:</span> <span id="in2"></span>
+          <div class="status-indicator" id="in1-indicator"></div>
+        </div>
+        
+        
+        <div style="margin-top: 1em;">
+          <div class="data-field">
+            <span class="label">Relay 1:</span>
+            <div class="status-indicator" id="out1-indicator"></div>
+          </div>
+            <button class="btn" onclick="setRelay(1, 1)">Turn On Relay 1</button>
+            <button class="btn" onclick="setRelay(1, 0)">Turn Off Relay 1</button>
+        </div>
+
+        <div style="margin-top: 1em;">
+          <div class="data-field">
+            <span class="label">Relay 2:</span>
+            <div class="status-indicator" id="out2-indicator"></div>
+          </div>
+          <button class="btn" onclick="setRelay(2, 1)">Turn On Relay 2</button>
+          <button class="btn" onclick="setRelay(2, 0)">Turn Off Relay 2</button>
+        </div>
+  </div>
+      </div>
+      <div class="can-status-container">
+        <div class="can-status-item">
+          <span class="can-status-label">Kotel CAN OK:</span>
+          <div class="status-indicator" id="kotel-can-indicator"></div>
+        </div>
+        <div class="can-status-item">
+          <span class="can-status-label">Sensor CAN OK:</span>
+          <div class="status-indicator" id="sensor-can-indicator"></div>
+        </div>
+        <div class="can-status-item">
+          <span class="can-status-label">Water Tank CAN OK:</span>
+          <div class="status-indicator" id="water-can-indicator"></div>
+        </div>
+        <div class="can-status-item">
+          <span class="can-status-label">UPS CAN OK:</span>
+          <div class="status-indicator" id="ups-can-indicator"></div>
+        </div>
+      </div>
+      <div class="timestamp-container">
+        <span class="timestamp-label">Last Update:</span>
+        <div class="timestamp" id="timestamp">--</div>
+      </div>
+    </div>
+  </div>
+  <script>
+    async function fetchData() {
+      try {
+        const res = await fetch('/get_vals');
+        const data = await res.json();
+
+        // Update timestamp
+        document.getElementById('timestamp').textContent = data.timestamp || 'No timestamp';
+
+        document.getElementById('batVoltage').textContent = data.batVoltage;
+        document.getElementById('batCurrent').textContent = data.batCurrent;
+        document.getElementById('batEnergy').textContent = data.batEnergy || '-';
+        document.getElementById('currentSource').textContent = data.currentSource || '—';
+
+        document.getElementById('pumpAmp').textContent = data.pumpAmp || '-';
+        document.getElementById('pumpState').textContent = data.pumpState ? 'On' : 'Off';
+        document.getElementById('pumpMode').textContent = data.pumpMode || '—';
+
+        document.getElementById('boilerTemperature').textContent = data.boilerTemperature;
+        document.getElementById('coolantTemperature').textContent = data.coolantTemperature;
+        document.getElementById('solarCollectorTemp').textContent = data.solarCollectorTemp;
+        document.getElementById('lightLevel').textContent = data.lightLevel;
+
+        document.getElementById('waterTankDIN').textContent = data.waterTankDIN;
+        document.getElementById('waterTankDOUT').textContent = data.waterTankDOUT;
+        document.getElementById('waterPress').textContent = data.waterPress;
+        document.getElementById('waterPressLoLim').textContent = data.waterPressLoLim || data.watetPressLoLim;
+        document.getElementById('waterPressDelta').textContent = data.waterPressDelta;
+        document.getElementById('waterLevel').textContent = data.waterLevel;
+
+
+        document.getElementById('kotelActTemp').textContent = data.kotelActTemp;
+        document.getElementById('kotelTemLo').textContent = data.kotelTemLo;
+        document.getElementById('kotelTemHi').textContent = data.kotelTemHi;
+        document.getElementById('kotelTemRun').textContent = data.kotelTemRun;
+        document.getElementById('kotelTemStop').textContent = data.kotelTemStop;
+        document.getElementById('kotelTemDelta').textContent = data.kotelTemDelta;
+        
+
+
+
+        document.getElementById('kotelMsgInteval').textContent = data.kotelMsgInteval || 'N/A';
+        document.getElementById('sensorUnitMsgInteval').textContent = data.sensorUnitMsgInteval || 'N/A';
+        document.getElementById('waterTankMsgInteval').textContent = data.waterTankMsgInteval || 'N/A';
+        document.getElementById('upsMsgInteval').textContent = data.upsMsgInteval || 'N/A';
+
+        // Update CAN status indicators
+        const kotelCanIndicator = document.getElementById('kotel-can-indicator');
+        const sensorCanIndicator = document.getElementById('sensor-can-indicator');
+        const waterCanIndicator = document.getElementById('water-can-indicator');
+        const upsCanIndicator = document.getElementById('ups-can-indicator');
+
+        if (kotelCanIndicator) {
+          kotelCanIndicator.className = 'status-indicator ' + ((data.kotelMsgInteval || 0) > 5000 ? 'off' : 'on');
+        }
+        if (sensorCanIndicator) {
+          sensorCanIndicator.className = 'status-indicator ' + ((data.sensorUnitMsgInteval || 0) > 5000 ? 'off' : 'on');
+        }
+        if (waterCanIndicator) {
+          waterCanIndicator.className = 'status-indicator ' + ((data.waterTankMsgInteval || 0) > 5000 ? 'off' : 'on');
+        }
+        if (upsCanIndicator) {
+          upsCanIndicator.className = 'status-indicator ' + ((data.upsMsgInteval || 0) > 5000 ? 'off' : 'on');
+        }
+
+        // Update kotel status indicators
+        const kotelStatus = data.kotelStatus || 0;
+        for (let i = 0; i < 8; i++) {
+          const bit = (kotelStatus >> i) & 1;
+          const indicator = document.getElementById(`kotel-bit${i}`);
+          if (indicator) {
+            indicator.className = 'status-indicator ' + (bit === 1 ? 'on' : 'off');
+          }
+        }
+
+        // Update UPS status indicators
+        const upsStatus = data.currentState || 0;
+        for (let i = 0; i < 8; i++) {
+          const bit = (upsStatus >> i) & 1;
+          const indicator = document.getElementById(`ups-bit${i}`);
+          if (indicator) {
+            indicator.className = 'status-indicator ' + (bit === 1 ? 'on' : 'off');
+          }
+        }
+
+        //document.getElementById('in1').textContent = data.in1;
+        //document.getElementById('in2').textContent = data.in2;
+        
+        // Update input status indicators
+        const in1Indicator = document.getElementById('in1-indicator');
+        const in0Indicator = document.getElementById('in0-indicator');
+        
+        if (in1Indicator) {
+          in1Indicator.className = 'status-indicator ' + (data.in2 == 1 ? 'on' : 'off');
+        }
+        if (in0Indicator) {
+          in0Indicator.className = 'status-indicator ' + (data.in1 == 1 ? 'on' : 'off');
+        }
+        
+        // Update relay status indicators
+        const out1Indicator = document.getElementById('out1-indicator');
+        const out2Indicator = document.getElementById('out2-indicator');
+        
+        out1Indicator.className = 'status-indicator ' + (data.out1 == 1 ? 'on' : 'off');
+        out2Indicator.className = 'status-indicator ' + (data.out2 == 1 ? 'on' : 'off');
+
+      } catch (e) {
+        console.error('Data fetch error', e);
+      }
+    }
+
+    function setRelay(n, state) {
+      fetch(`/set_rel${n}?state=${state}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log(`Relay ${n} set to ${state ? 'On' : 'Off'}`);
+        })
+        .catch(error => {
+          console.error('Error setting relay:', error);
+        });
+    }
+
+    function resetRelay(n) {
+      fetch(`/reset_rel${n}`);
+    }
+
+    setInterval(fetchData, 2000);
+    fetchData();
+  </script>
+</body>
+</html>

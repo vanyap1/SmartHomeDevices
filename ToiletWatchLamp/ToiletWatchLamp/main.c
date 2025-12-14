@@ -32,19 +32,22 @@ static FILE mystdout = FDEV_SETUP_STREAM((void *)uart_send_byte, NULL, _FDEV_SET
 u8g2_t lcd;
 uint8_t display_line[64];
 
+uint8_t minutes, seconds, isTimer = 0;
+
+
 gpio rtc_int = {(uint8_t *)&PORTD , PORTD2};
 gpio lcd_blk = {(uint8_t *)&PORTE , PORTE2};
 gpio ext_led = {(uint8_t *)&PORTD , PORTD4};
 
 
 rtc_date sys_rtc = {
-	.date = 30,
-	.month = 7,
+	.date = 17,
+	.month = 9,
 	.year = 25,
 	.dayofweek = 5,
-	.hour = 15,
-	.minute = 39,
-	.second = 00
+	.hour = 11,
+	.minute = 19,
+	.second = 30
 };
 
 #define LIGHT_TRASHEL_LEVEL			100
@@ -63,14 +66,28 @@ uint8_t BAT_INDICATOR_VAL = 0;
 
 ISR(INT0_vect){
 	rtc_int_request=1;
+	seconds++;
+	if(seconds >= 60) {
+		seconds = 0;
+		if (minutes <= 15)
+		{
+			minutes ++;
+			isTimer = 1;
+			}else{
+			isTimer = 0;
+		}
+	}
 }
 
 ISR(INT1_vect){
 	if(LIGHT_LEVEL <= 20){
 		LIGHT_TIMER = (BAT_VOLT >= BAT_LOW_LEVEL) ? LIGHT_TIMER_MAX : LIGHT_TIMER_MAX - TIMER_LB_OFFSET;
 		rtc_int_request=1;
-		}
 	}
+	minutes = 0;
+	seconds = 0;
+	isTimer = 1;
+}
 	
 
 int main(void)
@@ -144,7 +161,16 @@ int main(void)
 				u8g2_SetFont(&lcd, u8g2_font_logisoso22_tn);
 				u8g2_DrawStr(&lcd, 1, 25, (void *)char_array);
 				
-				sprintf(char_array, "V:%03d; T:%02d l:%04d", BAT_VOLT, LIGHT_TIMER, LIGHT_LEVEL);
+				if (isTimer)
+				{
+					sprintf(char_array, "V:%03d; T:%02d %02d:%02d", BAT_VOLT, LIGHT_TIMER, minutes, seconds);
+				}else{
+					sprintf(char_array, "V:%03d; T:%02d l:%04d", BAT_VOLT, LIGHT_TIMER, LIGHT_LEVEL);
+				}
+				
+				
+				
+				
 				u8g2_SetFont(&lcd, u8g2_font_6x10_mf);
 				u8g2_DrawStr(&lcd, 6, 60, (void *)char_array);
 				

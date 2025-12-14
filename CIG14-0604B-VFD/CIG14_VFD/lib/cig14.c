@@ -14,10 +14,10 @@
 #define nop() asm volatile ("nop")
 
 
-gpio vfd_rst = {(uint8_t *)&PORTB , PORTB1};
-gpio vfd_en = {(uint8_t *)&PORTB , PORTB0};
-gpio vfd_do = {(uint8_t *)&PORTD , PORTD6};
-gpio vfd_clk = {(uint8_t *)&PORTD , PORTD7};
+gpio vfd_rst = {(uint8_t *)&PORTB , PORTB0};
+gpio vfd_en = {(uint8_t *)&PORTB , PORTB1};
+gpio vfd_do = {(uint8_t *)&PORTC , PORTC0};
+gpio vfd_clk = {(uint8_t *)&PORTC , PORTC1};
 	
 	
 void vfd_init(uint8_t char_places){

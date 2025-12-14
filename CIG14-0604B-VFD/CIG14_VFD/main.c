@@ -48,19 +48,19 @@ int main(void)
 {
 	char char_array[128]="\0";
 	uart_init(250000,0);
-	twi_init(400000);
+	//twi_init(400000);
 		
 	EICRA |= (0b10 << ISC00);
 	EIMSK = 0x01;
 	
-	set_pin_dir(&ld1 , PORT_DIR_OUT); set_pin_level(&ld1, false);
-	set_pin_dir(&rtc_int, PORT_DIR_IN);
+	//set_pin_dir(&ld1 , PORT_DIR_OUT); set_pin_level(&ld1, false);
+	//set_pin_dir(&rtc_int, PORT_DIR_IN);
 		
 	sei();
 		
 	//rtc_set(&sys_rtc);																//write time to RTC
-	rtc_int_enable(&sys_rtc ,0);														//Serup RTC
-	adc_init();																			//ADC init
+	//rtc_int_enable(&sys_rtc ,0);														//Serup RTC
+	//adc_init();																			//ADC init
 	//ISL29034_init(POWER_RUN, RES_16_BIT, LUX_4000);										//Setup light sensor
 	//vfd_init(6);
 	vfd16_init();
@@ -75,19 +75,19 @@ int main(void)
 	
     while (1) 
     {
-		if (rtc_int_request != 0){
+		//if (rtc_int_request != 0){
 			rtc_int_request = 0;
 			//set_pin_level(&ld1, true);												//Debug led
-			rtc_sync(&sys_rtc);
+			//rtc_sync(&sys_rtc);
 			sprintf(char_array, "%02d:%02d:%02d", sys_rtc.hour, sys_rtc.minute, sys_rtc.second);
 			//_delay_ms(1);																//If need sleep before next RTC iteration
 			//sleep_cpu();
-		}
+		//}
 		
 		//sprintf(char_array, "%05u", read_light_intensity());							//Read light intensity from i2c light sensor
 		//vfd_set_brightness(read_light_intensity());
 		//vfd_string(0, (uint8_t *)char_array);											//Write char array to vfd screen
-		//uart_send_string((uint8_t *)char_array);
+		uart_send_string((uint8_t *)char_array);
 		//uart_send_string((uint8_t *)"\n\r");
 		
 		vfd16b_string(4, (uint8_t *)char_array);	
