@@ -34,7 +34,7 @@ gpio pirIntInput = {(uint8_t *)&PORTD , PORTD3};
 
 
 
-uint8_t TAB_PWM_1[256] = { 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 1 , 1 , 1 , 1,
+uint8_t TAB_PWM_1[256] = { 0 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1 , 1,
 	1 , 2 , 2 , 2 , 2 , 3 , 3 , 3 , 3 , 4 , 4 , 4 , 5 , 5 , 5 , 6,
 	6 , 6 , 7 , 7 , 7 , 8 , 8 , 9 , 9 , 9 , 10 , 10 , 11 , 11 , 12 , 12,
 	13 , 13 , 13 , 14 , 14 , 15 , 16 , 16 , 17 , 17 , 18 , 18 , 19 , 19 , 20 , 21,
@@ -59,6 +59,8 @@ int16_t ntc2Celsius = 0;
 uint8_t protectionFlg = 0;
 uint8_t lightLevel;
 uint8_t	manualLightLevel = 0;
+uint16_t manualRunTimeout = 0;
+uint32_t manualTimeTick = 0;
 
 uint32_t sysTick = 0;
 uint16_t pirLightTime;
@@ -74,6 +76,7 @@ ISR(INT1_vect){
 		pirSensorRequest = true;
 		pirLightTime = MAXAUTOLIGHTTIME;
 	}
+	manualRunTimeout = UNUSE_TIMEOUT;
 }
 
 ISR(TIMER4_COMPA_vect)
@@ -155,10 +158,26 @@ int main(void)
 			printf("L:%d; T:%d\n\r", ambientLightLevel, ntc1Celsius);
 		}
 		
+		if((sysTick - manualTimeTick) > 100){
+			manualTimeTick = sysTick;
+			if(manualRunTimeout != 0){
+				manualRunTimeout --;
+				printf("Tim:%d, pwm: %d\n\r", manualRunTimeout, manualLightLevel);
+			}
+			if(manualLightLevel !=0 && manualLightLevel < 20) manualLightLevel--;
+			//UNUSE_TIMEOUT
+			
+			
+		}
 		
 		
-		if(!gpio_get_pin_level(&btnM) && manualLightLevel !=0) manualLightLevel--;
-		if(!gpio_get_pin_level(&btnP) && manualLightLevel !=255) manualLightLevel++;
+		if(!gpio_get_pin_level(&btnM) && manualLightLevel !=0) { manualRunTimeout = UNUSE_TIMEOUT; manualLightLevel--;} 
+		if(!gpio_get_pin_level(&btnP) && manualLightLevel !=255) { manualRunTimeout = UNUSE_TIMEOUT; manualLightLevel++;}
+		
+		if(manualRunTimeout == 0 && manualLightLevel !=0){
+			manualLightLevel--;
+		}
+		
 		
 		if (inputVoltage <= CRITICALVOLTAGE || ntc1Celsius > PCB_CRITICAL_TEMP){
 			lightLevel = 0;
@@ -184,10 +203,20 @@ int main(void)
 			if(pirSensorRequest && lightLevel != 255)lightLevel++;
 			if(!pirSensorRequest && lightLevel != 0)lightLevel--;
 
-			CH1 = TAB_PWM_1[(manualLightLevel !=0) ? manualLightLevel : lightLevel ];
-			CH2 = 0;
-			CH3 = 0;
-			CH4 = 0;
+
+			if(manualLightLevel !=0){
+				CH1 = TAB_PWM_1[manualLightLevel];
+				CH2 = 0;
+				CH3 = 0;
+				CH4 = 0;
+				lightLevel = 0;
+			}else{
+				CH1 = TAB_PWM_1[lightLevel];
+				CH2 = 0;
+				CH3 = 0;
+				CH4 = 0;
+			}
+			
 			_delay_ms(1);
 				
 		}

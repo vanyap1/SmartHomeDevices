@@ -30,7 +30,7 @@ static FILE mystdout = FDEV_SETUP_STREAM((void *)uart_send_byte, NULL, _FDEV_SET
 #define OUT_B						OCR0A
 #define LIGHT_SENSOR				VIN_1
 #define BAT_LOW						3500
-#define ALOVED_LIGHT_LEVEL			2000
+#define ALOVED_LIGHT_LEVEL			3
 gpio ledRedPin = {(uint8_t *)&PORTB , PORTB1};
 gpio ledGrnPin = {(uint8_t *)&PORTB , PORTB2};
 gpio chrgerChrg = {(uint8_t *)&PORTE , PORTE1};
@@ -68,15 +68,18 @@ uint8_t powerSrc, charge;
 	
 ISR(INT0_vect){
 	rtc_int_request=1;
+	
 }	
 
 ISR(INT1_vect){
 	pir1_trigger=1;
+	
 }
 
 ISR(PCINT2_vect){
-	if(gpio_get_pin_level(&pir2_int)==false){
+	if(gpio_get_pin_level(&pir2_int)==true){
 		pir2_trigger=1;
+		
 	}
 }
 
@@ -110,7 +113,7 @@ int main(void)
 	
 	rtc_set(&sys_rtc);
 	rtc_int_enable(&sys_rtc ,0);
-	EICRA |= (0b10 << ISC00) | (0b10 << ISC10);
+	EICRA |= (0b10 << ISC00) | (0b11 << ISC10);
 	EIMSK = 0x03;
 	
 	PCICR |= (1 << 2);							//PCIE2 Pin Change Interrupt Enable 2
@@ -145,7 +148,7 @@ int main(void)
 			gpio_set_pin_level(&ledGrnPin, get_adc(LIGHT_SENSOR) <= ALOVED_LIGHT_LEVEL ? true : false);
 			
 			if(active_timer != 0){
-				if(gpio_get_pin_level(&pir2_int) == false || gpio_get_pin_level(&pir1_int) == false){
+				if(gpio_get_pin_level(&pir2_int) == true || gpio_get_pin_level(&pir1_int) == true){
 					//uart_send_string((uint8_t *)"Pir sensors wait\n\r");
 					}else{
 					active_timer--;
@@ -162,6 +165,7 @@ int main(void)
 		
 		
 		if (pir1_trigger == 1){
+			//printf("1 trig\n\r");
 			if(isActive == 0 && get_adc(LIGHT_SENSOR) <= ALOVED_LIGHT_LEVEL){
 				action_request = ON_UP_DOWN;
 			}
@@ -169,6 +173,7 @@ int main(void)
 		}
 		
 		if (pir2_trigger == 1){
+			//printf("2 trig\n\r");
 			if(isActive == 0 && get_adc(LIGHT_SENSOR) <= ALOVED_LIGHT_LEVEL){
 				action_request = ON_DOWN_UP;
 			}	
