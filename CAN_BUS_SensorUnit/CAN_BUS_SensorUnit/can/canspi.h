@@ -55,6 +55,8 @@ typedef union {
 
 bool CANSPI_Initialize(void);
 void CANSPI_Sleep(void);
+void CANSPI_SetDualFilter(uint32_t idA, uint32_t idB, bool isExtended);
+void CANSPI_ResetFilters(void);
 uint8_t CANSPI_Transmit(uCAN_MSG *tempCanMsg);
 uint8_t CANSPI_Receive(uCAN_MSG *tempCanMsg);
 uint8_t CANSPI_messagesInBuffer(void);

@@ -277,10 +277,20 @@ namespace CanBusSystemMonitor
                     {
                         packetStore[CANMsg.ID] = (CANMsg, 1);
                     }
+                   
                     if(CANMsg.ID == 0x301)
                     {
                         string dataStr = $"Inputs: {CANMsg.DATA[0]:X2}; Outputs: {CANMsg.DATA[1]:X2}; Pressure: {(CANMsg.DATA[2] << 8) + CANMsg.DATA[3]};  Plim: {(CANMsg.DATA[4] << 8) + CANMsg.DATA[5]}; Pdelta: {CANMsg.DATA[6]}; level: {CANMsg.DATA[7]}";
                         Console.WriteLine(dataStr);
+                    }
+                    else if(CANMsg.ID == 0x080)
+                    {
+                        Int16[] temp = new Int16[4];
+                        for(int i = 0; i < 4; i++)
+                        {
+                            temp[i] = (Int16)((CANMsg.DATA[2*i + 1] << 8) + CANMsg.DATA[2*i]);
+                        }
+                        Console.WriteLine($"T1: {temp[0]}; T2: {temp[1]}; T3: {temp[2]}; T4: {temp[3]}; ");
                     }
                     else
                     {

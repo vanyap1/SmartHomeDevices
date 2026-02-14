@@ -30,6 +30,7 @@ typedef struct {
 typedef struct{
 	uint16_t uid;
 	uint8_t dataValid;
+	uint8_t reportCan;
 	} sensorUnitDto;
 
 

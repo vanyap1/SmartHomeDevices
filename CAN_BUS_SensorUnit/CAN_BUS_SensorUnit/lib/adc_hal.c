@@ -5,6 +5,11 @@
  *  Author: User
  */ 
 #include "adc_hal.h"
+#include <math.h>
+#include <stdint.h>
+
+#define ADC_MAX 1023
+
 
 volatile static uint8_t adc_convert_done = 1;
 const float R1 = 10000.0;
@@ -45,7 +50,7 @@ uint16_t adc_convert(void){
 	adc_convert_done = 0;
 	
 	ADCSRA |= 1 << ADSC;
-	while(adc_convert_done == 0);
+	while(ADCSRA & (1 << ADSC));
 	
 	adcl = ADCL;
 	adch = ADCH;
@@ -72,8 +77,17 @@ int16_t getNTC(uint8_t thermalZone){
 }
 
 int16_t ADCtoCelsius(uint16_t adcValue) {
-	//Steinhart–Hart equation
-	float R2 = R1 / ((ADCResolution - adcValue) / (float)adcValue);
-	float temp = 1.0 / ((log(R2 / R1) / 3950.0) + (1.0 / 298.15)) - 273.15;
+	if (adcValue <= 5) return -999;    
+	if (adcValue >= 1018) return 999;  
+
+	
+	float R2 = R1 * ((float)adcValue / (ADC_MAX - adcValue));
+
+	float temp;
+	temp = log(R2 / R1);         
+	temp /= 3950.0;               
+	temp += 1.0 / 298.15;         
+	temp = 1.0 / temp;            
+	temp -= 273.15;               
 	return (int16_t)(temp * 10);
 }

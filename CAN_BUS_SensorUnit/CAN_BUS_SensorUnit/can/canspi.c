@@ -161,7 +161,47 @@ bool CANSPI_Initialize(void)
   
   return true;
 }
+void CANSPI_SetDualFilter(uint32_t idA, uint32_t idB, bool isExtended)
+{
+	id_reg_t regA, regB, maskReg;
+	uint8_t idType = isExtended ? dEXTENDED_CAN_MSG_ID_2_0B : dSTANDARD_CAN_MSG_ID_2_0B;
+	uint32_t fullMask = isExtended ? 0x1FFFFFFF : 0x7FF;
 
+	convertCANid2Reg(fullMask, idType, &maskReg);
+	convertCANid2Reg(idA, idType, &regA);
+	convertCANid2Reg(idB, idType, &regB);
+
+	MCP2515_SetConfigMode();
+
+	MCP2515_WriteByteSequence(MCP2515_RXM0SIDH, MCP2515_RXM0EID0, &(maskReg.tempSIDH));
+
+	MCP2515_WriteByteSequence(MCP2515_RXF0SIDH, MCP2515_RXF0EID0, &(regA.tempSIDH));
+	MCP2515_WriteByteSequence(MCP2515_RXF1SIDH, MCP2515_RXF1EID0, &(regA.tempSIDH));
+
+
+	MCP2515_WriteByteSequence(MCP2515_RXM1SIDH, MCP2515_RXM1EID0, &(maskReg.tempSIDH));
+
+	MCP2515_WriteByteSequence(MCP2515_RXF2SIDH, MCP2515_RXF2EID0, &(regB.tempSIDH));
+	MCP2515_WriteByteSequence(MCP2515_RXF3SIDH, MCP2515_RXF3EID0, &(regB.tempSIDH));
+	MCP2515_WriteByteSequence(MCP2515_RXF4SIDH, MCP2515_RXF4EID0, &(regB.tempSIDH));
+	MCP2515_WriteByteSequence(MCP2515_RXF5SIDH, MCP2515_RXF5EID0, &(regB.tempSIDH));
+
+	MCP2515_WriteByte(MCP2515_RXB0CTRL, 0x00);
+	MCP2515_WriteByte(MCP2515_RXB1CTRL, 0x00);
+
+	MCP2515_SetNormalMode();
+}
+
+void CANSPI_ResetFilters(void)
+{
+	MCP2515_SetConfigMode();
+	MCP2515_WriteByte(MCP2515_RXB0CTRL, 0x64);
+	MCP2515_WriteByte(MCP2515_RXB1CTRL, 0x60);
+	id_reg_t zeroReg = {0, 0, 0, 0};
+	MCP2515_WriteByteSequence(MCP2515_RXM0SIDH, MCP2515_RXM0EID0, &(zeroReg.tempSIDH));
+	MCP2515_WriteByteSequence(MCP2515_RXM1SIDH, MCP2515_RXM1EID0, &(zeroReg.tempSIDH));
+	MCP2515_SetNormalMode();
+}
 /* Transmit CAN message */
 uint8_t CANSPI_Transmit(uCAN_MSG *tempCanMsg) 
 {
@@ -360,6 +400,8 @@ static uint32_t convertReg2StandardCANid(uint8_t tempRXBn_SIDH, uint8_t tempRXBn
   
   return (returnValue);
 }
+
+
 
 /* convert CAN ID to register value */
 static void convertCANid2Reg(uint32_t tempPassedInID, uint8_t canIdType, id_reg_t *passedIdReg) 
